@@ -68,7 +68,179 @@
             pointer-events: auto;
         }
 
-        #start-screen,
+        .menu-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 24px;
+            cursor: pointer;
+            text-transform: uppercase;
+            padding: 10px 30px;
+            /* Add horizontal padding for arrow space */
+            position: relative;
+            transition: color 0.2s;
+            text-align: center;
+            width: auto;
+            /* Fit content */
+            white-space: nowrap;
+        }
+
+        .menu-btn:hover,
+        .menu-btn.selected {
+            color: #00ffff;
+        }
+
+        .menu-btn:hover::before,
+        .menu-btn.selected::before {
+            content: '> ';
+            position: absolute;
+            left: 0px;
+            /* Position at the start of padding */
+            color: #00ffff;
+        }
+
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000a2e;
+            background-image: url('assets/start_screen/background.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+            /* Distribute horizontally */
+            align-items: center;
+            z-index: 10;
+            pointer-events: auto;
+            padding: 0 50px;
+            /* Add padding */
+            box-sizing: border-box;
+        }
+
+        .start-left {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+
+        .start-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            /* height: 80%; Removed */
+            /* flex: 1; Removed */
+            position: relative;
+        }
+
+        .start-right {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+
+        .logo-icon {
+            width: 120px;
+            image-rendering: pixelated;
+            animation: float 3s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+
+        .logo-text {
+            width: 300px;
+            image-rendering: pixelated;
+        }
+
+        .anim-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: balance 2s ease-in-out infinite alternate;
+            transform-origin: bottom center;
+        }
+
+        .char-owl {
+            width: 250px;
+            image-rendering: pixelated;
+            z-index: 2;
+            position: relative;
+            top: 63px;
+            /* Animation removed */
+        }
+
+        /* @keyframes flutter removed */
+
+        /* Updated */
+
+        .char-stack {
+            /* width: 150px; Removed */
+            height: 570px;
+            /* Added */
+            image-rendering: pixelated;
+            /* margin-top: -10px; Removed */
+            /* Synced animation */
+            /* Pivot from bottom */
+        }
+
+        .start-btn {
+            background: linear-gradient(180deg, #ff00cc, #ff6600);
+            border: 4px solid #330066;
+            box-shadow: 6px 6px 0px #000;
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            padding: 25px 50px;
+            /* Larger button */
+            font-size: 28px;
+            cursor: pointer;
+            text-transform: uppercase;
+            text-shadow: 3px 3px 0px #330066;
+            transition: transform 0.1s;
+        }
+
+        .start-btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: 2px 2px 0px #000;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+
+            100% {
+                transform: translateY(0px);
+            }
+        }
+
+        @keyframes balance {
+            0% {
+                transform: rotate(-5deg);
+            }
+
+            100% {
+                transform: rotate(5deg);
+            }
+        }
+
+        100% {
+            transform: rotate(5deg);
+        }
+        }
+
         #game-over-screen {
             position: absolute;
             top: 0;
@@ -97,24 +269,39 @@
             /* Center inputs */
         }
 
+
+
         .char-input {
             width: 40px;
             height: 50px;
-            background: #222;
-            border: 4px solid #fff;
-            color: #ffcc00;
+            background: transparent;
+            border: 2px solid #fff;
+            color: #00ffff;
+            /* Neon Blue */
             font-family: 'Press Start 2P', cursive;
             font-size: 24px;
             text-align: center;
             text-transform: uppercase;
             outline: none;
             caret-color: transparent;
-            /* Hide default caret */
         }
 
         .char-input:focus {
-            border-color: #ffcc00;
-            animation: blink-border 1s infinite;
+            outline: none;
+            border-color: #00ffff;
+            animation: blink-focus 1s infinite;
+        }
+
+        @keyframes blink-focus {
+
+            0%,
+            100% {
+                border-color: #00ffff;
+            }
+
+            50% {
+                border-color: transparent;
+            }
         }
 
         /* Admin Panel */
@@ -125,7 +312,7 @@
             font-size: 24px;
             cursor: pointer;
             pointer-events: auto;
-            z-index: 100;
+            z-index: 1000;
             opacity: 0.5;
         }
 
@@ -133,20 +320,36 @@
             opacity: 1;
         }
 
+        /* Admin Palette (Neon Blue Theme) */
+        :root {
+            --gb-darkest: #000a2e;
+            /* Deep Blue */
+            --gb-dark: #1a1a40;
+            /* Panel/Input BG */
+            --gb-lightest: #00ffff;
+            /* Neon Text/Border */
+            --gb-bg: #0f0f1e;
+            /* Main Overlay BG */
+        }
+
         #admin-panel {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #222;
-            border: 4px solid #ff0000;
-            padding: 20px;
-            z-index: 101;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--gb-bg);
+            z-index: 1001;
             display: none;
             flex-direction: column;
-            gap: 10px;
-            width: 300px;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
             pointer-events: auto;
+            font-family: 'Press Start 2P', cursive;
+            color: var(--gb-lightest);
+            /* Changed to Lightest */
         }
 
         #admin-panel input {
@@ -155,11 +358,227 @@
             margin-bottom: 5px;
             width: 100%;
             box-sizing: border-box;
+            background: var(--gb-dark);
+            /* Dark BG for inputs */
+            color: #fff;
+            /* White text for inputs */
+            border: 1px solid var(--gb-lightest);
+            /* Neon border */
         }
 
         #admin-panel label {
+            font-size: 12px;
+            color: var(--gb-lightest);
+            /* Changed to Lightest */
+            display: block;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .admin-header {
+            color: var(--gb-lightest);
+            /* Changed to Lightest */
+            font-size: 32px;
+            text-align: left;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+        }
+
+        .section-title {
+            color: var(--gb-lightest);
+            /* Changed to Lightest */
+            font-size: 18px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            text-align: left;
+            border-bottom: 2px solid var(--gb-lightest);
+            /* Changed to Lightest */
+            padding-bottom: 5px;
+            width: 100%;
+        }
+
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 12px;
+            border: 2px solid var(--gb-lightest);
+            /* Changed to Lightest */
+        }
+
+        .admin-table th {
+            text-align: left;
+            padding: 10px;
+            border: 1px solid var(--gb-lightest);
+            background: var(--gb-dark);
+            color: var(--gb-lightest);
+        }
+
+        .admin-table td {
+            padding: 10px;
+            border: 1px solid var(--gb-lightest);
+            vertical-align: middle;
+            background: transparent;
+            color: #fff;
+        }
+
+        .admin-table input {
+            width: 100%;
+            background: var(--gb-dark);
+            border: 1px solid var(--gb-lightest);
+            color: #fff;
+            padding: 5px;
+            font-family: 'Press Start 2P', cursive;
+            box-shadow: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 10px;
+            color: #fff;
             font-size: 10px;
-            color: #aaa;
+            text-transform: uppercase;
+            border: 1px solid #fff;
+            box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.2);
+        }
+
+        .badge-normal {
+            background-color: #4a6d8c;
+            /* Muted Blue */
+        }
+
+        .badge-heavy {
+            background-color: #8c4a4a;
+            /* Muted Red */
+        }
+
+        .admin-footer {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: auto;
+            gap: 20px;
+        }
+
+        .gb-input {
+            width: 100%;
+            background: var(--gb-dark);
+            color: #fff;
+            border: 1px solid var(--gb-lightest);
+            padding: 10px;
+            font-family: 'Press Start 2P';
+            box-shadow: none;
+        }
+
+        .gb-btn {
+            background-color: transparent;
+            border: 2px solid var(--gb-lightest);
+            box-shadow: none;
+            color: var(--gb-lightest);
+            font-family: 'Press Start 2P', cursive;
+            padding: 15px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            text-transform: uppercase;
+            flex: 1;
+            transition: all 0.2s;
+        }
+
+        .gb-btn:hover {
+            background-color: var(--gb-lightest);
+            color: var(--gb-darkest);
+        }
+
+        .gb-btn:active {
+            transform: translate(2px, 2px);
+        }
+
+        /* Responsive Adjustments */
+        .table-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            overflow-x: auto;
+            width: 100%;
+            border: 2px solid var(--gb-darkest);
+            margin-bottom: 20px;
+        }
+
+        .admin-controls-container {
+            width: 95%;
+            height: 95%;
+            display: flex;
+            flex-direction: column;
+            max-width: none;
+            /* Fluid */
+        }
+
+        @media (max-width: 768px) {
+            .admin-header {
+                font-size: 20px;
+            }
+
+            .section-title {
+                font-size: 14px;
+            }
+
+            .gb-btn {
+                padding: 10px;
+                font-size: 10px;
+            }
+
+            .admin-table th,
+            .admin-table td {
+                padding: 5px;
+                font-size: 10px;
+            }
+
+            .global-config-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+
+
+
+        /* Falling Broken Boxes */
+        .falling-box {
+            position: absolute;
+            background-color: #fff;
+            opacity: 0.3;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(110vh) rotate(360deg);
+            }
+        }
+
+        @keyframes pulse-grow {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        @keyframes pulse-shrink {
+
+            0%,
+            100% {
+                transform: scale(1.1);
+            }
+
+            50% {
+                transform: scale(1);
+            }
         }
     </style>
 </head>
@@ -177,46 +596,72 @@
 
     <!-- Start Screen -->
     <div id="start-screen">
-        <h1
-            style="color: #ffcc00; text-shadow: 4px 4px #000; margin-bottom: 40px; text-align: center; line-height: 1.5;">
-            O EQUILÍBRIO<br>DA CORUJA</h1>
-        <button class="pixel-btn" id="play-btn">JOGAR</button>
+        <div class="start-left">
+            <img src="assets/start_screen/logo_icon.png" class="logo-icon" alt="Icon">
+            <img src="assets/start_screen/logo_text.png" class="logo-text" alt="Ruti Stack">
+        </div>
+        <div class="start-center">
+            <div class="anim-container">
+                <img src="assets/start_screen/owl.png" class="char-owl" alt="Owl">
+                <img src="assets/start_screen/stack.png" class="char-stack" alt="Stack">
+            </div>
+        </div>
+        <div class="start-right">
+            <button class="start-btn" id="play-btn">JOGAR</button>
+        </div>
     </div>
 
     <!-- Game Over Screen -->
-    <div id="game-over-screen" class="hidden">
-        <h1 style="color: #ff0000; text-shadow: 4px 4px #000;">GAME OVER</h1>
-        <p id="final-score" style="margin: 20px 0;">SCORE: 0</p>
-        <button class="pixel-btn" id="restart-btn" style="margin-bottom: 20px;">TENTAR DE NOVO</button>
-        <button class="pixel-btn" id="save-score-btn"
-            style="background-color: #4285F4; color: white; border-color: white;">SALVAR RECORDE (G)</button>
+    <div id="game-over-screen" class="hidden"
+        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 100; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #000a2e; background-image: url('assets/start_screen/background.png'); background-size: cover; background-position: center; overflow: hidden;">
+
+        <!-- Content Wrapper (Above Falling Boxes) -->
+        <div
+            style="position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; gap: 48px; width: 100%;">
+
+            <!-- Group 1: Image -->
+            <div style="display: flex; gap: 20px; align-items: center; justify-content: center;">
+                <img src="assets/game_over/game_text.png" alt="GAME"
+                    style="width: 40%; max-width: 200px; image-rendering: pixelated; animation: pulse-grow 2s infinite ease-in-out;">
+                <img src="assets/game_over/over_text.png" alt="OVER"
+                    style="width: 40%; max-width: 200px; image-rendering: pixelated; animation: pulse-shrink 2s infinite ease-in-out;">
+            </div>
+
+            <!-- Group 2: Score -->
+            <div id="final-score" style="font-size: 48px; color: #fff; text-shadow: 4px 4px 0px #000;">SCORE: 0</div>
+
+            <!-- Group 3: Nickname & Save (Bordered Box) -->
+            <div
+                style="border: 4px solid #fff; padding: 20px; background: rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; gap: 15px;">
+                <div style="color: #fff; font-size: 20px; margin-bottom: 5px; font-family: 'Press Start 2P', cursive;">
+                    APELIDO</div>
+
+                <div class="input-group">
+                    <input type="text" maxlength="1" class="char-input" id="char1">
+                    <input type="text" maxlength="1" class="char-input" id="char2">
+                    <input type="text" maxlength="1" class="char-input" id="char3">
+                    <input type="text" maxlength="1" class="char-input" id="char4">
+                    <input type="text" maxlength="1" class="char-input" id="char5">
+                </div>
+
+                <button class="pixel-btn" id="save-score-btn"
+                    style="width: 100%; font-size: 18px; background: transparent; border: 4px solid #fff; color: #fff;">SALVAR
+                    SCORE</button>
+                <button class="pixel-btn" id="clear-btn"
+                    style="width: 100%; font-size: 14px; background: transparent; border: 2px solid #ff4444; color: #ff4444; margin-top: 10px;">LIMPAR</button>
+            </div>
+
+            <!-- Group 4: Restart Button -->
+            <button class="menu-btn" id="restart-btn" style="margin-top: 20px;">TENTAR DE NOVO (R)</button>
+        </div>
     </div>
 
     <!-- Admin Button & Panel -->
     <div id="admin-btn">⚙️</div>
     <div id="admin-panel">
-        <h3 style="text-align: center; color: #ff0000;">GOD MODE</h3>
-
-        <label>Senha Admin</label>
-        <input type="password" id="admin-pass" placeholder="Senha">
-
-        <div id="admin-controls" style="display:none;">
-            <label>Gravidade Y (Padrão: 1)</label>
-            <input type="number" id="cfg-gravity" step="0.1" value="1">
-
-            <label>Velocidade Base (Padrão: 2)</label>
-            <input type="number" id="cfg-speed" step="0.1" value="2">
-
-            <label>Mult. Dificuldade (Padrão: 0.1)</label>
-            <input type="number" id="cfg-diff" step="0.01" value="0.1">
-
-            <button class="pixel-btn" id="save-global-btn"
-                style="width: 100%; font-size: 10px; margin-top: 10px;">SALVAR GLOBAL</button>
+        <div id="admin-controls" class="admin-controls-container">
+            <!-- Dynamic Content -->
         </div>
-
-        <button class="pixel-btn" id="admin-login-btn" style="width: 100%; font-size: 10px;">ACESSAR</button>
-        <button class="pixel-btn" id="admin-close-btn"
-            style="width: 100%; font-size: 10px; background-color: #555; margin-top: 5px;">FECHAR</button>
     </div>
 
     <!-- Firebase SDKs -->
@@ -228,12 +673,13 @@
         // --- FIREBASE CONFIGURATION ---
         // COLE SUA FIREBASE CONFIG AQUI
         const firebaseConfig = {
-            // apiKey: "API_KEY",
-            // authDomain: "PROJECT_ID.firebaseapp.com",
-            // projectId: "PROJECT_ID",
-            // storageBucket: "PROJECT_ID.appspot.com",
-            // messagingSenderId: "SENDER_ID",
-            // appId: "APP_ID"
+            apiKey: "AIzaSyCOAt0sfrDXeZgRYwA5UuTxayX3rr0ubyY",
+            authDomain: "rutistack-c75f2.firebaseapp.com",
+            projectId: "rutistack-c75f2",
+            storageBucket: "rutistack-c75f2.firebasestorage.app",
+            messagingSenderId: "401193886438",
+            appId: "1:401193886438:web:5279b37e344ecfbbd35127",
+            measurementId: "G-5NW50RJQN7"
         };
 
         let app, db, auth;
@@ -261,18 +707,57 @@
         };
 
         // Fetch Remote Config
+        // Fetch Remote Config
         async function loadGameConfig() {
+            // 1. Load Local (Fallback/Cache)
+            const localConfig = localStorage.getItem('gameConfig');
+            if (localConfig) {
+                gameConfig = { ...gameConfig, ...JSON.parse(localConfig) };
+                console.log("Local config loaded (cache):", gameConfig);
+            }
+            const localBoxTypes = localStorage.getItem('boxTypes');
+            if (localBoxTypes) {
+                boxTypes = JSON.parse(localBoxTypes);
+                console.log("Local box types loaded (cache):", boxTypes);
+            }
+
             if (!isFirebaseReady) return;
+
             try {
-                const docRef = doc(db, "settings", "gameConfig");
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
+                // 2. Load Global Config from Firestore
+                const configRef = doc(db, "settings", "gameConfig");
+                const configSnap = await getDoc(configRef);
+
+                if (configSnap.exists()) {
+                    const data = configSnap.data();
                     gameConfig = { ...gameConfig, ...data };
                     console.log("Remote config loaded:", gameConfig);
+                    localStorage.setItem('gameConfig', JSON.stringify(gameConfig));
+                } else {
+                    // Create default if not exists
+                    await setDoc(configRef, gameConfig);
+                    console.log("Remote config created with defaults.");
                 }
+
+                // 3. Load Box Types from Firestore
+                const boxesRef = doc(db, "settings", "boxTypes");
+                const boxesSnap = await getDoc(boxesRef);
+
+                if (boxesSnap.exists()) {
+                    const data = boxesSnap.data();
+                    if (data.types) {
+                        boxTypes = data.types;
+                        console.log("Remote box types loaded:", boxTypes);
+                        localStorage.setItem('boxTypes', JSON.stringify(boxTypes));
+                    }
+                } else {
+                    // Create default
+                    await setDoc(boxesRef, { types: boxTypes });
+                    console.log("Remote box types created with defaults.");
+                }
+
             } catch (e) {
-                console.log("Using default config.");
+                console.error("Remote config error:", e);
             }
         }
 
@@ -307,6 +792,48 @@
         let craneSpeed = 2;
         const CRANE_Y = -50; // Absolute top (visual offset handled in update)
 
+        // Box Configuration (Data-Driven)
+        // Box Configuration (Data-Driven)
+        let defaultBoxTypes = [
+            {
+                id: 'normal',
+                name: 'Caixa Normal',
+                chance: 90,
+                textures: ['box_normal_1', 'box_normal_2', 'box_normal_3'], // Array of texture keys
+                width: 128,
+                height: 128,
+                density: 0.01,
+                friction: 0.5,
+                bounce: 0.1
+            },
+            {
+                id: 'heavy',
+                name: 'Caixa Pesada',
+                chance: 10,
+                textures: ['box_heavy_1', 'box_heavy_2'],
+                width: 180,
+                height: 80,
+                density: 0.05,
+                friction: 0.5,
+                bounce: 0.1
+            }
+        ];
+
+        // Load box config from local storage or use default
+        let boxTypes = JSON.parse(localStorage.getItem('boxTypes')) || JSON.parse(JSON.stringify(defaultBoxTypes));
+
+        // DATA MIGRATION: Ensure 'textures' array exists for old saves
+        boxTypes.forEach(type => {
+            if (!type.textures || type.textures.length === 0) {
+                const def = defaultBoxTypes.find(t => t.id === type.id);
+                if (def) {
+                    type.textures = [...def.textures];
+                } else {
+                    type.textures = [type.texture || 'box'];
+                }
+            }
+        });
+
         let ropeGraphics;
         let swingTime = 0;
         let owl, buttonSprite, wingSprite;
@@ -320,15 +847,33 @@
         function preload() {
             const graphics = this.make.graphics({ x: 0, y: 0, add: false });
 
-            // 1. Box Texture
+            // Box Texture (Placeholder for Sprite)
+            // Box Textures (Placeholders)
+            graphics.clear();
             graphics.fillStyle(0xFFFFFF);
             graphics.fillRect(0, 0, 128, 128);
-            graphics.lineStyle(8, 0x000000);
-            graphics.strokeRect(0, 0, 128, 128);
-            graphics.fillStyle(0xFF0000);
-            graphics.fillRect(56, 0, 16, 128);
-            graphics.fillRect(0, 56, 128, 16);
-            graphics.generateTexture('box', 128, 128);
+            graphics.generateTexture('box_normal_1', 128, 128);
+
+            graphics.clear();
+            graphics.fillStyle(0xEEEEEE); // Slightly different shade
+            graphics.fillRect(0, 0, 128, 128);
+            graphics.generateTexture('box_normal_2', 128, 128);
+
+            graphics.clear();
+            graphics.fillStyle(0xDDDDDD);
+            graphics.fillRect(0, 0, 128, 128);
+            graphics.generateTexture('box_normal_3', 128, 128);
+
+            // Heavy Box Textures
+            graphics.clear();
+            graphics.fillStyle(0xFFFFFF);
+            graphics.fillRect(0, 0, 180, 80);
+            graphics.generateTexture('box_heavy_1', 180, 80);
+
+            graphics.clear();
+            graphics.fillStyle(0xCCCCCC);
+            graphics.fillRect(0, 0, 180, 80);
+            graphics.generateTexture('box_heavy_2', 180, 80);
 
             // 2. Crane (Simple Gray)
             graphics.clear();
@@ -441,11 +986,11 @@
 
             // Clouds Texture (Tiny)
             graphics.clear();
+            // Clouds Texture (Placeholder for Sprite)
+            graphics.clear();
             graphics.fillStyle(0xFFFFFF);
-            graphics.fillCircle(10, 10, 5);
-            graphics.fillCircle(20, 8, 6);
-            graphics.fillCircle(30, 10, 5);
-            graphics.generateTexture('cloud', 40, 20);
+            graphics.fillRect(0, 0, 128, 64); // Larger placeholder rect
+            graphics.generateTexture('cloud', 128, 64);
 
             // Background Texture (Stars/Space)
             graphics.clear();
@@ -470,15 +1015,19 @@
             background.setScrollFactor(0);
             background.setDepth(-100);
 
-            // Clouds (Parallax, initially invisible)
-            const clouds = this.add.tileSprite(width / 2, height / 2, width, height, 'cloud');
-            clouds.setScrollFactor(0);
-            clouds.setDepth(-95);
-            clouds.setAlpha(0); // Start invisible
-            clouds.setName('clouds');
-            // Make them sparse
-            clouds.tileScaleX = 1;
-            clouds.tileScaleY = 1;
+            // Clouds (Sparse Group)
+            this.clouds = this.add.group();
+            // Create fewer clouds, spread out
+            for (let i = 0; i < 6; i++) {
+                const x = Phaser.Math.Between(0, width);
+                // Spread from bottom (height) to way up (-2000)
+                const y = Phaser.Math.Between(-2000, height);
+                const cloud = this.add.image(x, y, 'cloud');
+                cloud.setDepth(-95);
+                cloud.setAlpha(1.0); // Fully visible placeholder
+                cloud.setScrollFactor(0.5); // Parallax
+                this.clouds.add(cloud);
+            }
 
             // Buildings (Image, not TileSprite, to avoid looping)
             // Anchored at bottom, moves with parallax
@@ -496,6 +1045,7 @@
             // Crane
             crane = this.add.image(width / 2, CRANE_Y, 'crane');
             crane.setDepth(10);
+            crane.setVisible(false); // Hide the crane pole, keep only rope
 
             ropeGraphics = this.add.graphics();
             ropeGraphics.setDepth(9);
@@ -526,8 +1076,10 @@
                 fontFamily: '"Press Start 2P"', fontSize: '14px', color: '#000000'
             }).setOrigin(0.5).setScrollFactor(0).setDepth(21);
 
-            this.add.text(20, 50, 'ALTURA:', { fontFamily: '"Press Start 2P"', fontSize: '12px', color: '#aaaaaa' }).setScrollFactor(0);
-            this.add.text(20, 70, '0m', { fontFamily: '"Press Start 2P"', fontSize: '16px', color: '#ffffff' }).setName('heightDisplay').setScrollFactor(0);
+            // Height Display (Single Line)
+            this.add.text(20, 50, 'ALTURA: 0m', { fontFamily: '"Press Start 2P"', fontSize: '16px', color: '#ffffff' })
+                .setName('heightDisplay')
+                .setScrollFactor(0);
 
             const instructionText = this.add.text(width / 2, height - 50, 'CLIQUE PARA SOLTAR', {
                 fontFamily: '"Press Start 2P"',
@@ -656,18 +1208,6 @@
 
             // Buildings: Image with scrollFactor handles itself. No manual update needed.
 
-            // Clouds: Fade in and scroll
-            const clouds = this.children.getByName('clouds');
-            if (clouds) {
-                // Parallax scroll for texture
-                clouds.tilePositionY = this.cameras.main.scrollY * 0.5;
-                clouds.tilePositionX += 0.1; // Slow drift
-
-                // Fade in as we go up (0 at 0, 1 at -2000)
-                const altitude = -this.cameras.main.scrollY;
-                clouds.setAlpha(Phaser.Math.Clamp((altitude - 500) / 1000, 0, 0.5)); // Max alpha 0.5
-            }
-
             // Hide Instruction
             const instructionText = this.children.getByName('instructionText');
             if (instructionText) {
@@ -718,7 +1258,7 @@
             // Update Height UI
             const towerHeight = Math.max(0, Math.floor((height - 100 - highestStaticY) / 128));
             const heightText = this.children.getByName('heightDisplay');
-            if (heightText) heightText.setText(towerHeight + 'm');
+            if (heightText) heightText.setText('ALTURA: ' + towerHeight + 'm');
 
             // Update Owl Expression
             const avgDeviation = staticBoxCount > 0 ? totalDeviation / staticBoxCount : 0;
@@ -743,19 +1283,19 @@
             // 4. Crane Position (Always above camera view)
             // Crane stays at fixed relative position to camera top, or follows tower?
             // User asked for "topo zero da tela".
-            // So crane.y should be camera.scrollY + offset
-            crane.y = this.cameras.main.scrollY + 50;
+            // So crane.y should be camera.scrollY
+            crane.y = this.cameras.main.scrollY;
 
             // 5. Rope & Swing
             ropeGraphics.clear();
             if (currentBox && currentBox.isCarried) {
                 swingTime += delta * (craneSpeed * 0.0005);
-                const ropeLength = 100;
-                const maxSwingAngle = 1.0;
+                const ropeLength = 250; // Longer rope since it starts from top
+                const maxSwingAngle = 0.6; // Reduced from 1.0 to be less wide
                 const angle = Math.sin(swingTime) * maxSwingAngle;
 
                 const ropeEndX = crane.x + Math.sin(angle) * ropeLength;
-                const ropeEndY = crane.y + 60 + Math.cos(angle) * ropeLength;
+                const ropeEndY = crane.y + Math.cos(angle) * ropeLength;
 
                 const boxX = ropeEndX + Math.sin(angle) * 64;
                 const boxY = ropeEndY + Math.cos(angle) * 64;
@@ -763,59 +1303,96 @@
                 currentBox.setPosition(boxX, boxY);
                 currentBox.setRotation(0); // NO ROTATION on crane
 
-                currentBox.swingVelX = (Math.cos(angle) * maxSwingAngle * (craneSpeed * 0.0005 * delta)) * ropeLength;
-                currentBox.swingVelY = 0;
+                // Analytical Velocity Calculation (Derivative)
+                // Theta = sin(swingTime) * maxSwingAngle
+                // dTheta/dt = cos(swingTime) * maxSwingAngle * speedFactor
+                const speedFactor = craneSpeed * 0.0005;
+                const dThetaDt = Math.cos(swingTime) * maxSwingAngle * speedFactor; // rad/ms
+
+                // Vx = L * cos(Theta) * dTheta/dt
+                // Vy = -L * sin(Theta) * dTheta/dt
+                // Multiply by 16.66 to convert px/ms to px/frame (Matter.js units)
+                const frameTime = 16.66;
+                currentBox.swingVelX = (ropeLength * Math.cos(angle) * dThetaDt) * frameTime;
+                currentBox.swingVelY = (ropeLength * -Math.sin(angle) * dThetaDt) * frameTime;
 
                 ropeGraphics.lineStyle(4, 0xffffff);
                 ropeGraphics.beginPath();
-                ropeGraphics.moveTo(crane.x, crane.y + 40);
+                ropeGraphics.moveTo(crane.x, crane.y); // Start exactly at top
                 ropeGraphics.lineTo(ropeEndX, ropeEndY);
                 ropeGraphics.strokePath();
             }
         }
-
         function spawnBox(scene) {
             if (!isGameActive) return;
             if (currentBox) return;
 
-            // console.log('Spawning new box...');
-
             const { width } = scene.scale;
-            const colors = [0xFF0000, 0x00FF00, 0x0000FF, 0xFFFF00, 0xFF00FF, 0x00FFFF];
-            const tint = colors[Phaser.Math.Between(0, colors.length - 1)];
+
+            // Select Box Type based on Chance
+            // First box always Normal if possible, or just random?
+            // User previously wanted first box not to be heavy.
+            // Let's filter for 'normal' type for first box if it exists.
+
+            let selectedType;
+            if (boxes.length === 0) {
+                selectedType = boxTypes.find(t => t.id === 'normal') || boxTypes[0];
+            } else {
+                const totalChance = boxTypes.reduce((sum, t) => sum + t.chance, 0);
+                let random = Phaser.Math.Between(0, totalChance);
+                for (const type of boxTypes) {
+                    if (random <= type.chance) {
+                        selectedType = type;
+                        break;
+                    }
+                    random -= type.chance;
+                }
+                if (!selectedType) selectedType = boxTypes[0]; // Fallback
+            }
+
+            // Select Random Texture from the list
+            const textureList = selectedType.textures || [selectedType.texture]; // Fallback for old config
+            let textureKey = Phaser.Utils.Array.GetRandom(textureList);
+
+            // Check for custom texture (if user uploaded one)
+            // Logic update: Custom textures overwrite specific slots.
+            // e.g. box_normal_1_custom
+            if (scene.textures.exists(textureKey + '_custom')) {
+                textureKey = textureKey + '_custom';
+            }
 
             // Spawn at crane position
-            const box = scene.matter.add.image(width / 2, crane.y + 80, 'box');
-            box.setTint(tint);
-            box.setRectangle(128, 128);
+            const box = scene.matter.add.image(width / 2, crane.y + 250, textureKey);
+
+            // Apply Physics Properties
+            box.setRectangle(selectedType.width, selectedType.height);
+            box.setDisplaySize(selectedType.width, selectedType.height); // Match visual to physics
+            box.setDensity(selectedType.density);
+            box.setFriction(selectedType.friction);
+            box.setBounce(selectedType.bounce);
+
+            box.boxTypeId = selectedType.id; // Store type ID for reference
+
             box.setIgnoreGravity(true); // Ignore gravity while carried
-            box.setDensity(0.01);
-            box.setFriction(0.5);
-            box.setBounce(0.1);
 
             box.isCarried = true;
             box.swingVelX = 0;
             box.swingVelY = 0;
-            box.lastX = box.x;
-            box.lastY = box.y;
 
             currentBox = box;
             boxes.push(box);
-            // console.log('Box spawned:', box);
         }
 
         function dropBox(scene) {
-            if (!currentBox) return;
+            if (!currentBox || isDropping) return;
 
-            // console.log('Dropping box...');
+            isDropping = true;
+            logEvent('DROP_BOX', { x: crane.x, y: crane.y, angle: currentBox.rotation }); // Use currentBox.rotation for angle
 
             currentBox.isCarried = false;
             currentBox.setIgnoreGravity(false);
 
-            // Fix: Apply the exact swing velocity calculated from position change
-            // Scale it up slightly if needed, as Matter velocity is per step
-            // If swingVelX is px/frame, and Matter updates at 60fps, this should be fine.
-            // Maybe add a small multiplier if it feels too slow.
+            // Apply calculated analytical velocity
             currentBox.setVelocity(currentBox.swingVelX, currentBox.swingVelY);
 
             fallingBox = currentBox;
@@ -833,6 +1410,7 @@
                 if (isGameActive) spawnBox(scene);
             });
         }
+
 
         function startGame() {
             console.log('Starting Game...');
@@ -889,21 +1467,155 @@
             }
         }
 
-        function gameOver() {
-            console.log('Game Over! Final Score:', score);
-            isGameActive = false;
-            document.getElementById('final-score').innerText = 'SCORE: ' + score;
-            document.getElementById('game-over-screen').classList.remove('hidden');
+        // --- GAME OVER LOGIC ---
+        let gameOverMenuIndex = 0; // 0: Save, 1: Restart
+        let fallingBoxesInterval = null;
 
-            if (game) {
-                game.scene.scenes[0].scene.pause();
-            }
+        function startGameOverRain() {
+            if (fallingBoxesInterval) clearInterval(fallingBoxesInterval);
+
+            const container = document.getElementById('game-over-screen');
+
+            fallingBoxesInterval = setInterval(() => {
+                if (container.classList.contains('hidden')) return;
+
+                const box = document.createElement('div');
+                box.classList.add('falling-box');
+
+                // Random size (tripled: 30-90px)
+                const size = Math.random() * 60 + 30;
+                box.style.width = size + 'px';
+                box.style.height = size + 'px';
+
+                // Random position
+                box.style.left = Math.random() * 100 + '%';
+                box.style.top = '-100px'; // Start higher up to account for larger size
+
+                // Random animation (slower: 5-10s)
+                const duration = Math.random() * 5 + 5;
+                box.style.animation = `fall ${duration}s linear forwards`;
+
+                container.appendChild(box);
+
+                // Cleanup
+                setTimeout(() => {
+                    if (box.parentNode) box.parentNode.removeChild(box);
+                }, duration * 1000);
+
+            }, 600); // Spawn every 600ms (slower frequency)
         }
+
+        function stopGameOverRain() {
+            if (fallingBoxesInterval) {
+                clearInterval(fallingBoxesInterval);
+                fallingBoxesInterval = null;
+            }
+            // Remove all existing boxes
+            document.querySelectorAll('.falling-box').forEach(el => el.remove());
+        }
+
+        function updateGameOverMenu() {
+            const buttons = [document.getElementById('save-score-btn'), document.getElementById('restart-btn')];
+            buttons.forEach((btn, index) => {
+                if (index === gameOverMenuIndex) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
+            });
+        }
+
+        function gameOver() {
+            isGameActive = false;
+            if (game) {
+                game.scene.pause('default');
+            }
+
+            const finalScore = Math.max(0, boxes.length - 1); // Simple score based on boxes
+            logEvent('GAME_OVER', { score: finalScore });
+            const scoreElement = document.getElementById('final-score');
+            if (scoreElement) scoreElement.innerText = 'SCORE: ' + finalScore;
+
+            const gameOverScreen = document.getElementById('game-over-screen');
+            if (gameOverScreen) {
+                gameOverScreen.classList.remove('hidden');
+                gameOverScreen.style.display = 'flex'; // Force display flex
+
+                // Start Rain
+                startGameOverRain();
+
+                // Reset Menu
+                gameOverMenuIndex = 0;
+                updateGameOverMenu();
+            }
+
+            const startScreen = document.getElementById('start-screen');
+            if (startScreen) {
+                startScreen.style.display = 'none'; // Ensure start screen is hidden
+            }
+
+            // Focus on first input
+            setTimeout(() => {
+                const firstInput = document.getElementById('char1');
+                if (firstInput) firstInput.focus();
+            }, 100);
+
+            logEvent('GAME_OVER', { score: finalScore });
+        }
+
+        // --- ANTI-HACK LOG SYSTEM ---
+        let gameLog = [];
+
+        function logEvent(action, details = {}) {
+            gameLog.push({
+                ts: Date.now(),
+                action: action,
+                ...details
+            });
+            // console.log('Log:', action, details);
+        }
+
+        // Global Keyboard Listener for Game Over Menu
+        document.addEventListener('keydown', (e) => {
+            const gameOverScreen = document.getElementById('game-over-screen');
+            if (!gameOverScreen || gameOverScreen.classList.contains('hidden')) return;
+
+            // If typing in input, ignore arrows unless they are for navigation between inputs (handled by browser)
+            // But we want to navigate buttons if inputs are NOT focused or if we press Down from inputs?
+            // Let's keep it simple: Up/Down always navigates buttons if we are not typing?
+            // Actually user said "using keyboard keys to change selection".
+
+            if (e.key === 'ArrowUp') {
+                gameOverMenuIndex = (gameOverMenuIndex - 1 + 2) % 2;
+                updateGameOverMenu();
+            } else if (e.key === 'ArrowDown') {
+                gameOverMenuIndex = (gameOverMenuIndex + 1) % 2;
+                updateGameOverMenu();
+            } else if (e.key === 'Enter') {
+                // Trigger selected button
+                if (gameOverMenuIndex === 0) {
+                    document.getElementById('save-score-btn').click();
+                } else {
+                    document.getElementById('restart-btn').click();
+                }
+            } else if (e.key === ' ' || e.key.toLowerCase() === 'r') {
+                // Shortcut: Space or R to Restart immediately (User Request)
+                document.getElementById('restart-btn').click();
+            }
+        });
 
         // --- UI & ADMIN LOGIC ---
 
         document.getElementById('play-btn').addEventListener('click', async () => {
-            await loadGameConfig();
+            console.log('Play button clicked');
+            try {
+                // Timeout for config load to prevent hanging
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000));
+                await Promise.race([loadGameConfig(), timeoutPromise]);
+            } catch (e) {
+                console.warn('Config load skipped or failed:', e);
+            }
+            console.log('Calling startGame...');
             startGame();
         });
 
@@ -911,93 +1623,415 @@
             startGame();
         });
 
+        // Name Input Logic
+        const nameInputs = document.querySelectorAll('.char-input');
+        nameInputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                if (input.value.length === 1) {
+                    if (index < nameInputs.length - 1) nameInputs[index + 1].focus();
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && input.value.length === 0) {
+                    if (index > 0) nameInputs[index - 1].focus();
+                }
+            });
+        });
+
         document.getElementById('save-score-btn').addEventListener('click', async () => {
-            if (!isFirebaseReady) {
-                alert("Firebase não configurado!");
+            if (playerName.length < 3) {
+                alert("Digite um nome com pelo menos 3 letras!");
                 return;
             }
 
-            const provider = new GoogleAuthProvider();
+            const newScore = {
+                name: playerName,
+                score: score,
+                date: new Date().toLocaleDateString()
+            };
+
+            // Save to LocalStorage
+            let highScores = JSON.parse(localStorage.getItem('highScores') || '[]');
+            highScores.push(newScore);
+            highScores.sort((a, b) => b.score - a.score);
+            highScores = highScores.slice(0, 10); // Keep top 10
+            localStorage.setItem('highScores', JSON.stringify(highScores));
+
+            alert(`Recorde Salvo Localmente!\nNome: ${playerName}\nScore: ${score}`);
+
+            // Firebase Logic
+            if (!isFirebaseReady) {
+                console.warn("Firebase não está pronto. Score salvo apenas localmente.");
+                return;
+            }
+
             try {
-                const result = await signInWithPopup(auth, provider);
-                const user = result.user;
-
-                await addDoc(collection(db, "scores"), {
-                    uid: user.uid,
-                    displayName: user.displayName,
+                // Add a new document with a generated id.
+                const docRef = await addDoc(collection(db, "scores"), {
+                    name: playerName,
                     score: score,
-                    timestamp: Date.now(),
-                    inputLogs: "valid" // Placeholder for anti-cheat logs
+                    date: new Date().toISOString() // Use ISO string for better sorting/format
                 });
-
-                alert("Recorde salvo com sucesso!");
-            } catch (error) {
-                console.error(error);
-                alert("Erro ao salvar: " + error.message);
+                console.log("Document written with ID: ", docRef.id);
+                alert(`Recorde Salvo no Firebase!\nID: ${docRef.id}`);
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                alert("Erro ao salvar no Firebase. Verifique o console.");
             }
         });
 
         // Admin Panel
         const adminPanel = document.getElementById('admin-panel');
         const adminControls = document.getElementById('admin-controls');
+        adminControls.className = 'admin-controls-container';
+        adminControls.style.width = '95%'; // Ensure fluid width
+        adminControls.style.maxWidth = 'none'; // Remove limit
 
+        adminControls.innerHTML = `
+            
+            <h2 class="section-title">CONFIGURAÇÃO GLOBAL</h2>
+            <div class="global-config-row" style="display: flex; gap: 20px; margin-bottom: 30px; width: 100%;">
+                <div style="flex: 1;">
+                    <label>Gravidade Y</label>
+                    <input type="number" id="cfg-gravity" step="0.1" class="gb-input" value="${gameConfig.gravity}">
+                </div>
+                <div style="flex: 1;">
+                    <label>Velocidade Base</label>
+                    <input type="number" id="cfg-speed" step="0.1" class="gb-input" value="${gameConfig.baseSpeed}">
+                </div>
+                <div style="flex: 1;">
+                    <label>Mult. Dificuldade</label>
+                    <input type="number" id="cfg-diff" step="0.01" class="gb-input" value="${gameConfig.difficultyMultiplier}">
+                </div>
+            </div>
+
+            <h2 class="section-title">TIPOS DE CAIXA</h2>
+            <div id="box-types-list" class="table-container">
+                <!-- Dynamic Table Here -->
+            </div>
+
+            <div class="admin-footer">
+                <button class="gb-btn" id="admin-cancel-btn">CANCELAR</button>
+                <button class="gb-btn" id="reset-defaults-btn" style="background-color: #8c4a4a; color: #fff;">RESETAR PADRÕES</button>
+                <button class="gb-btn" id="save-global-btn">SALVAR TUDO</button>
+            </div>
+        `;
+
+        // Password Modal HTML
+        const passwordOverlay = document.createElement('div');
+        passwordOverlay.id = 'password-overlay';
+        passwordOverlay.style.cssText = 'display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; justify-content: center; align-items: center;';
+        passwordOverlay.innerHTML = `
+            <div id="password-modal" class="pixel-box" style="position: relative; min-width: 300px;">
+                <h3 style="color: #fff; margin-top: 0;">SENHA ADMIN</h3>
+                <input type="password" id="modal-pass" class="char-input" style="width: 90%; margin: 20px 0; font-size: 24px;" placeholder="***">
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button id="modal-confirm" class="pixel-btn">ACESSAR</button>
+                    <button id="modal-close" class="pixel-btn" style="border-color: #ff4444; color: #ff4444;">FECHAR</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(passwordOverlay);
+
+        // --- DYNAMIC ADMIN PANEL ---
+
+        function renderAdminPanel() {
+            const container = document.getElementById('box-types-list');
+            container.innerHTML = '';
+
+            const table = document.createElement('table');
+            table.className = 'admin-table';
+
+            // Table Header
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Chance</th>
+                        <th>Densidade</th>
+                        <th>Largura</th>
+                        <th>Altura</th>
+                        <th>Atrito</th>
+                        <th>Sprites (Upload)</th>
+                        <th>Preview</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-table-body"></tbody>
+            `;
+
+            container.appendChild(table);
+            const tbody = table.querySelector('tbody');
+
+            boxTypes.forEach((type, index) => {
+                const tr = document.createElement('tr');
+
+                const badgeClass = type.id === 'heavy' ? 'badge-heavy' : 'badge-normal';
+                const badgeName = type.id === 'heavy' ? 'Pesada' : 'Normal';
+
+                // Generate upload inputs for each texture slot
+                let spritesHtml = '<div style="display: flex; flex-direction: column; gap: 5px;">';
+                const textures = type.textures || [type.texture]; // Handle migration
+
+                spritesHtml += `
+                    <input type="file" id="upload-${type.id}" accept="image/*" style="display: none;">
+                    <button class="gb-btn" onclick="document.getElementById('upload-${type.id}').click()" style="font-size: 10px; padding: 5px;">Upload</button>
+                `;
+                spritesHtml += '</div>';
+
+                tr.innerHTML = `
+                    <td><span class="badge ${badgeClass}">${badgeName}</span></td>
+                    <td><input type="number" class="box-input" data-id="${index}" data-field="chance" value="${type.chance}"></td>
+                    <td><input type="number" class="box-input" data-id="${index}" data-field="density" step="0.01" value="${type.density}"></td>
+                    <td><input type="number" class="box-input" data-id="${index}" data-field="width" value="${type.width}"></td>
+                    <td><input type="number" class="box-input" data-id="${index}" data-field="height" value="${type.height}"></td>
+                    <td><input type="number" class="box-input" data-id="${index}" data-field="friction" step="0.1" value="${type.friction}"></td>
+                    <td>${spritesHtml}</td>
+                    <td style="text-align: center;">
+                        <img id="preview-${type.id}" src="${type.textures && type.textures[0] ? type.textures[0] : ''}" 
+                             style="width: 50px; height: 50px; object-fit: contain; background: #000; border: 1px solid var(--gb-lightest);">
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Re-attach sprite upload listeners
+            document.querySelectorAll('.sprite-upload').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    const textureKey = e.target.dataset.key;
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const img = new Image();
+                        img.src = event.target.result;
+                        img.onload = () => {
+                            if (game) {
+                                const customKey = textureKey + '_custom';
+                                if (game.textures.exists(customKey)) game.textures.remove(customKey);
+                                game.textures.addImage(customKey, img);
+                                alert(`Sprite ${textureKey} atualizado!`);
+                            }
+                        };
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+        }
+
+
+
+        // --- DYNAMIC ADMIN PANEL ---
+
+        // Admin Button Logic
         document.getElementById('admin-btn').addEventListener('click', () => {
-            adminPanel.style.display = 'flex';
+            console.log('Admin button clicked');
+            document.getElementById('password-overlay').style.display = 'flex'; // Show Overlay
+            document.getElementById('modal-pass').value = '';
+            document.getElementById('modal-pass').focus();
         });
 
-        document.getElementById('admin-close-btn').addEventListener('click', () => {
-            adminPanel.style.display = 'none';
+        // Password Modal Logic
+        document.getElementById('modal-close').addEventListener('click', () => {
+            document.getElementById('password-overlay').style.display = 'none';
         });
 
-        document.getElementById('admin-login-btn').addEventListener('click', () => {
-            const pass = document.getElementById('admin-pass').value;
-            if (pass === "admin123") {
-                adminControls.style.display = 'block';
-                document.getElementById('admin-login-btn').style.display = 'none';
+        document.getElementById('modal-confirm').addEventListener('click', async () => {
+            const pass = document.getElementById('modal-pass').value;
+            if (pass === "admin123") { // Hardcoded for now
+                document.getElementById('password-overlay').style.display = 'none';
 
-                // Load current values into inputs
+                // Hide other screens for Full Screen Admin
+                document.getElementById('start-screen').style.display = 'none';
+                document.getElementById('game-container').style.display = 'none';
+                document.getElementById('game-over-screen').classList.add('hidden');
+
+                // Load latest values from Firestore before showing
+                if (isFirebaseReady) {
+                    document.body.style.cursor = 'wait';
+                    await loadGameConfig();
+                    document.body.style.cursor = 'default';
+                }
+
+                // Load values and show panel
+                renderAdminPanel();
                 document.getElementById('cfg-gravity').value = gameConfig.gravity;
                 document.getElementById('cfg-speed').value = gameConfig.baseSpeed;
                 document.getElementById('cfg-diff').value = gameConfig.difficultyMultiplier;
+
+                const adminPanel = document.getElementById('admin-panel');
+                adminPanel.style.display = 'flex';
             } else {
                 alert("Senha Incorreta!");
             }
         });
 
+        // Cancel Button Logic
+        document.getElementById('admin-cancel-btn').addEventListener('click', () => {
+            adminPanel.style.display = 'none';
+            // Return to Start Screen
+            document.getElementById('start-screen').style.display = 'flex';
+            document.getElementById('game-container').style.display = 'block';
+            document.getElementById('game-over-screen').classList.add('hidden'); // Ensure game over is hidden
+        });
+
+        // Reset Defaults Logic
+        document.getElementById('reset-defaults-btn').addEventListener('click', () => {
+            if (confirm("Tem certeza? Isso vai resetar todas as configurações e sprites para o padrão original.")) {
+                localStorage.removeItem('gameConfig');
+                localStorage.removeItem('boxTypes');
+                // Also clear Firestore if needed? Maybe just local for now to fix the view.
+                // Let's just reload the page to fetch defaults.
+                window.location.reload();
+            }
+        });    // Return to Start Screen
+        document.getElementById('start-screen').classList.remove('hidden');
+        document.getElementById('game-over-screen').classList.add('hidden');
+        // Removed old admin-login-btn listener as per instructions.
+        // document.getElementById('admin-login-btn').addEventListener('click', () => {
+        //     // Password check removed as requested
+        //     // const pass = document.getElementById('admin-pass').value;
+        //     // if (pass === "admin123") {
+        //     adminControls.style.display = 'block';
+        //     document.getElementById('admin-login-btn').style.display = 'none';
+        //     // Hide password input too since it's not needed
+        //     document.getElementById('admin-pass').style.display = 'none';
+        //     const passLabel = document.querySelector('label[for="admin-pass"]');
+        //     if (passLabel) passLabel.style.display = 'none';
+
+        //     // Load current values into inputs
+        //     document.getElementById('cfg-gravity').value = gameConfig.gravity;
+        //     document.getElementById('cfg-speed').value = gameConfig.baseSpeed;
+        //     document.getElementById('cfg-diff').value = gameConfig.difficultyMultiplier;
+        //     // } else {
+        //     //     alert("Senha Incorreta!");
+        //     // }
+        // });
+
+        // Sprite Upload Logic
+        // This function is now integrated into renderAdminPanel and its calls are removed.
+        // function handleSpriteUpload(inputId, textureKey) {
+        //     document.getElementById(inputId).addEventListener('change', (e) => {
+        //         const file = e.target.files[0];
+        //         if (!file) return;
+
+        //         const reader = new FileReader();
+        //         reader.onload = (event) => {
+        //             const img = new Image();
+        //             img.src = event.target.result;
+        //             img.onload = () => {
+        //                 if (game) {
+        //                     // Add new texture
+        //                     const customKey = textureKey + '_custom';
+        //                     if (game.textures.exists(customKey)) {
+        //                         game.textures.remove(customKey);
+        //                     }
+        //                     game.textures.addImage(customKey, img);
+        //                     alert(`Sprite ${textureKey} atualizado! Próximas caixas usarão o novo sprite.`);
+        //                 }
+        //             };
+        //         };
+        //         reader.readAsDataURL(file);
+        //     });
+        // }
+
+        // handleSpriteUpload('upload-box', 'box');
+        // handleSpriteUpload('upload-box-heavy', 'box_heavy');
+
+        // Update Save Logic
+        // Update Save Logic
         document.getElementById('save-global-btn').addEventListener('click', async () => {
+            // 1. Save Global Config
             const newConfig = {
                 gravity: parseFloat(document.getElementById('cfg-gravity').value),
                 baseSpeed: parseFloat(document.getElementById('cfg-speed').value),
                 difficultyMultiplier: parseFloat(document.getElementById('cfg-diff').value)
             };
-
-            // Atualiza localmente sempre
             gameConfig = newConfig;
+            localStorage.setItem('gameConfig', JSON.stringify(newConfig));
 
-            // Aplica gravidade imediatamente se o jogo estiver rodando
+            // 2. Save Box Types
+            const rows = document.querySelectorAll('#admin-table-body tr');
+            rows.forEach(row => {
+                const inputs = row.querySelectorAll('.box-input');
+                inputs.forEach(input => {
+                    const index = input.dataset.id;
+                    const field = input.dataset.field;
+                    let value = parseFloat(input.value);
+                    if (isNaN(value)) value = 0;
+
+                    boxTypes[index][field] = value;
+                });
+            });
+            localStorage.setItem('boxTypes', JSON.stringify(boxTypes));
+
+            // 3. Save to Firestore
+            if (isFirebaseReady) {
+                try {
+                    const saveBtn = document.getElementById('save-global-btn');
+                    const originalText = saveBtn.innerText;
+                    saveBtn.innerText = "SALVANDO...";
+                    saveBtn.disabled = true;
+
+                    await setDoc(doc(db, "settings", "gameConfig"), newConfig);
+                    await setDoc(doc(db, "settings", "boxTypes"), { types: boxTypes });
+
+                    alert("Salvo no Firebase e Localmente!");
+                    saveBtn.innerText = originalText;
+                    saveBtn.disabled = false;
+                } catch (e) {
+                    console.error("Firebase save error:", e);
+                    alert("Salvo localmente. Erro no Firebase: " + e.message);
+                    document.getElementById('save-global-btn').disabled = false;
+                }
+            } else {
+                alert("Salvo Localmente (Offline)!");
+            }
+
+            // Apply Physics Immediately
             if (game) {
                 const scene = game.scene.scenes[0];
-                if (scene) {
-                    scene.matter.world.setGravity(0, gameConfig.gravity);
+                if (scene) scene.matter.world.setGravity(0, gameConfig.gravity);
+            }
+
+            // adminPanel.style.display = 'none'; // Keep panel open (User Request)
+        });
+
+        // --- GLOBAL SHORTCUTS (Document Level) ---
+        document.addEventListener('keydown', (event) => {
+            const key = event.key;
+            // console.log('Global Keydown:', key);
+
+            const startScreen = document.getElementById('start-screen');
+            const gameOverScreen = document.getElementById('game-over-screen');
+
+            const startVisible = startScreen && getComputedStyle(startScreen).display !== 'none';
+            const gameOverVisible = gameOverScreen && !gameOverScreen.classList.contains('hidden');
+
+            if (key === ' ' || key === 'Enter') {
+                if (startVisible) {
+                    console.log('Global Shortcut: Start Game');
+                    startGame();
+                    event.preventDefault(); // Prevent scroll
+                } else if (gameOverVisible) {
+                    console.log('Global Shortcut: Restart Game');
+                    startGame();
+                    event.preventDefault();
                 }
-            }
-
-            if (!isFirebaseReady) {
-                alert("Modo Offline: Configuração atualizada localmente! (Reinicie a partida para ver efeito na velocidade)");
-                return;
-            }
-
-            try {
-                await setDoc(doc(db, "settings", "gameConfig"), newConfig);
-                alert("Configuração Global Salva no Firebase!");
-            } catch (e) {
-                console.error(e);
-                alert("Erro ao salvar no Firebase. Configuração aplicada apenas localmente.");
             }
         });
 
+        // Check for Game Over test param
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('gameover') === 'true') {
+            // Wait a brief moment for assets/DOM to be ready
+            setTimeout(() => {
+                gameOver();
+            }, 500);
+        }
     </script>
 
 </body>
 
 </html>
+```
