@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O Equilíbrio da Coruja</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0f0f1e;
+            font-family: 'Press Start 2P', cursive;
+            overflow: hidden;
+            color: white;
+            user-select: none;
+        }
+
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* UI Overlay */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .pixel-btn {
+            background-color: #ffcc00;
+            border: 4px solid #fff;
+            box-shadow: 4px 4px 0px #000;
+            color: #000;
+            font-family: 'Press Start 2P', cursive;
+            padding: 15px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            pointer-events: auto;
+            text-transform: uppercase;
+            transition: transform 0.1s;
+        }
+
+        .pixel-btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px #000;
+        }
+
+        .pixel-box {
+            background: rgba(0, 0, 0, 0.8);
+            border: 4px solid #fff;
+            padding: 20px;
+            text-align: center;
+            pointer-events: auto;
+        }
+
+        #start-screen,
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 15, 30, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            pointer-events: auto;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Name Input Styles */
+        #name-input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+            /* Center inputs */
+        }
+
+        .char-input {
+            width: 40px;
+            height: 50px;
+            background: #222;
+            border: 4px solid #fff;
+            color: #ffcc00;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 24px;
+            text-align: center;
+            text-transform: uppercase;
+            outline: none;
+            caret-color: transparent;
+            /* Hide default caret */
+        }
+
+        .char-input:focus {
+            border-color: #ffcc00;
+            animation: blink-border 1s infinite;
+        }
+
+        /* Admin Panel */
+        #admin-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            pointer-events: auto;
+            z-index: 100;
+            opacity: 0.5;
+        }
+
+        #admin-btn:hover {
+            opacity: 1;
+        }
+
+        #admin-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #222;
+            border: 4px solid #ff0000;
+            padding: 20px;
+            z-index: 101;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            width: 300px;
+            pointer-events: auto;
+        }
+
+        #admin-panel input {
+            font-family: 'Press Start 2P', cursive;
+            padding: 5px;
+            margin-bottom: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #admin-panel label {
+            font-size: 10px;
+            color: #aaa;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="game-container"></div>
+
+    <!-- UI Layer -->
+    <div class="ui-layer">
+        <div style="display: flex; justify-content: space-between; width: 100%;">
+            <div id="score-display">SCORE: 0</div>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen">
+        <h1
+            style="color: #ffcc00; text-shadow: 4px 4px #000; margin-bottom: 40px; text-align: center; line-height: 1.5;">
+            O EQUILÍBRIO<br>DA CORUJA</h1>
+        <button class="pixel-btn" id="play-btn">JOGAR</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="hidden">
+        <h1 style="color: #ff0000; text-shadow: 4px 4px #000;">GAME OVER</h1>
+        <p id="final-score" style="margin: 20px 0;">SCORE: 0</p>
+        <button class="pixel-btn" id="restart-btn" style="margin-bottom: 20px;">TENTAR DE NOVO</button>
+        <button class="pixel-btn" id="save-score-btn"
+            style="background-color: #4285F4; color: white; border-color: white;">SALVAR RECORDE (G)</button>
+    </div>
+
+    <!-- Admin Button & Panel -->
+    <div id="admin-btn">⚙️</div>
+    <div id="admin-panel">
+        <h3 style="text-align: center; color: #ff0000;">GOD MODE</h3>
+
+        <label>Senha Admin</label>
+        <input type="password" id="admin-pass" placeholder="Senha">
+
+        <div id="admin-controls" style="display:none;">
+            <label>Gravidade Y (Padrão: 1)</label>
+            <input type="number" id="cfg-gravity" step="0.1" value="1">
+
+            <label>Velocidade Base (Padrão: 2)</label>
+            <input type="number" id="cfg-speed" step="0.1" value="2">
+
+            <label>Mult. Dificuldade (Padrão: 0.1)</label>
+            <input type="number" id="cfg-diff" step="0.01" value="0.1">
+
+            <button class="pixel-btn" id="save-global-btn"
+                style="width: 100%; font-size: 10px; margin-top: 10px;">SALVAR GLOBAL</button>
+        </div>
+
+        <button class="pixel-btn" id="admin-login-btn" style="width: 100%; font-size: 10px;">ACESSAR</button>
+        <button class="pixel-btn" id="admin-close-btn"
+            style="width: 100%; font-size: 10px; background-color: #555; margin-top: 5px;">FECHAR</button>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+
+        // --- FIREBASE CONFIGURATION ---
+        // COLE SUA FIREBASE CONFIG AQUI
+        const firebaseConfig = {
+            // apiKey: "API_KEY",
+            // authDomain: "PROJECT_ID.firebaseapp.com",
+            // projectId: "PROJECT_ID",
+            // storageBucket: "PROJECT_ID.appspot.com",
+            // messagingSenderId: "SENDER_ID",
+            // appId: "APP_ID"
+        };
+
+        let app, db, auth;
+        let isFirebaseReady = false;
+
+        try {
+            if (firebaseConfig.apiKey) {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                isFirebaseReady = true;
+                console.log("Firebase initialized.");
+            } else {
+                console.warn("Firebase config missing. Running in offline mode.");
+            }
+        } catch (e) {
+            console.error("Firebase init error:", e);
+        }
+
+        // --- GAME CONFIGURATION ---
+        let gameConfig = {
+            gravity: 1,
+            baseSpeed: 2,
+            difficultyMultiplier: 0.1
+        };
+
+        // Fetch Remote Config
+        async function loadGameConfig() {
+            if (!isFirebaseReady) return;
+            try {
+                const docRef = doc(db, "settings", "gameConfig");
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    gameConfig = { ...gameConfig, ...data };
+                    console.log("Remote config loaded:", gameConfig);
+                }
+            } catch (e) {
+                console.log("Using default config.");
+            }
+        }
+
+        // --- PHASER GAME ---
+        const config = {
+            type: Phaser.AUTO,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            parent: 'game-container',
+            backgroundColor: '#0f0f1e',
+            physics: {
+                default: 'matter',
+                matter: {
+                    gravity: { y: 1 }, // Will be updated by gameConfig
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        let game;
+        let crane;
+        let currentBox = null;
+        let fallingBox = null; // Track the box currently falling
+        let boxes = [];
+        let isGameActive = false;
+        let score = 0;
+        let craneSpeed = 2;
+        const CRANE_Y = -50; // Absolute top (visual offset handled in update)
+
+        let ropeGraphics;
+        let swingTime = 0;
+        let owl, buttonSprite, wingSprite;
+        let background; // TileSprite
+
+        function initGame() {
+            if (game) return;
+            game = new Phaser.Game(config);
+        }
+
+        function preload() {
+            const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+
+            // 1. Box Texture
+            graphics.fillStyle(0xFFFFFF);
+            graphics.fillRect(0, 0, 128, 128);
+            graphics.lineStyle(8, 0x000000);
+            graphics.strokeRect(0, 0, 128, 128);
+            graphics.fillStyle(0xFF0000);
+            graphics.fillRect(56, 0, 16, 128);
+            graphics.fillRect(0, 56, 128, 16);
+            graphics.generateTexture('box', 128, 128);
+
+            // 2. Crane (Simple Gray)
+            graphics.clear();
+            graphics.fillStyle(0x888888);
+            graphics.fillRect(0, 0, 20, 100); // Main vertical pole
+            graphics.fillStyle(0x555555);
+            graphics.fillRect(-10, 80, 40, 20); // Bottom weight
+            graphics.generateTexture('crane', 40, 100);
+
+            // 4. Platform (Full Width & Height)
+            graphics.clear();
+            graphics.fillStyle(0x555555); // Gray
+            graphics.fillRect(0, 0, 2000, 100); // Taller to cover bottom
+            graphics.lineStyle(4, 0x333333);
+            graphics.strokeRect(0, 0, 2000, 100);
+            graphics.generateTexture('platform', 2000, 100);
+
+            // 5. Owl (Happy) - Improved
+            graphics.clear();
+            // Body
+            graphics.fillStyle(0x8B4513);
+            graphics.fillRoundedRect(10, 10, 60, 80, 20);
+            // Ears
+            graphics.beginPath();
+            graphics.moveTo(10, 10); graphics.lineTo(0, -10); graphics.lineTo(30, 10);
+            graphics.moveTo(70, 10); graphics.lineTo(80, -10); graphics.lineTo(50, 10);
+            graphics.fillPath();
+            // Belly
+            graphics.fillStyle(0xD2B48C);
+            graphics.fillEllipse(40, 60, 25, 30);
+            // Eyes (Big & Cute)
+            graphics.fillStyle(0xFFFFFF);
+            graphics.fillCircle(25, 35, 12);
+            graphics.fillCircle(55, 35, 12);
+            graphics.fillStyle(0x000000);
+            graphics.fillCircle(25, 35, 5);
+            graphics.fillCircle(55, 35, 5);
+            graphics.fillStyle(0xFFFFFF); // Shine
+            graphics.fillCircle(27, 33, 2);
+            graphics.fillCircle(57, 33, 2);
+            // Beak
+            graphics.fillStyle(0xFFA500);
+            graphics.beginPath();
+            graphics.moveTo(35, 45); graphics.lineTo(45, 45); graphics.lineTo(40, 55);
+            graphics.fillPath();
+            graphics.generateTexture('owl_happy', 80, 100);
+
+            // 6. Owl (Fearful) - Improved
+            graphics.clear();
+            // Body
+            graphics.fillStyle(0x8B4513);
+            graphics.fillRoundedRect(10, 10, 60, 80, 20);
+            // Ears (Flattened)
+            graphics.beginPath();
+            graphics.moveTo(10, 10); graphics.lineTo(5, 0); graphics.lineTo(30, 10);
+            graphics.moveTo(70, 10); graphics.lineTo(75, 0); graphics.lineTo(50, 10);
+            graphics.fillPath();
+            // Belly
+            graphics.fillStyle(0xD2B48C);
+            graphics.fillEllipse(40, 60, 25, 30);
+            // Eyes (Wide)
+            graphics.fillStyle(0xFFFFFF);
+            graphics.fillCircle(25, 35, 14);
+            graphics.fillCircle(55, 35, 14);
+            graphics.fillStyle(0x000000);
+            graphics.fillCircle(25, 35, 3); // Tiny pupils
+            graphics.fillCircle(55, 35, 3);
+            // Beak (Open)
+            graphics.fillStyle(0xFFA500);
+            graphics.fillCircle(40, 50, 5);
+            graphics.generateTexture('owl_fear', 80, 100);
+
+            // Wing
+            graphics.clear();
+            graphics.fillStyle(0x654321);
+            graphics.fillEllipse(20, 12, 20, 12);
+            graphics.generateTexture('wing', 40, 25);
+
+            // Owl Frame (Retro Green Monitor)
+            graphics.clear();
+            // Casing
+            graphics.fillStyle(0x004400); // Dark Green
+            graphics.fillRoundedRect(0, 0, 140, 140, 15);
+            // Bezel
+            graphics.fillStyle(0x002200); // Darker Green
+            graphics.fillRoundedRect(10, 10, 120, 120, 5);
+            // Screen
+            graphics.fillStyle(0x001100); // Almost Black Green
+            graphics.fillRect(15, 15, 110, 110);
+            // Scanlines
+            graphics.fillStyle(0x00FF00);
+            graphics.globalAlpha = 0.1;
+            for (let y = 15; y < 125; y += 2) {
+                graphics.fillRect(15, y, 110, 1);
+            }
+            graphics.globalAlpha = 1.0;
+            graphics.generateTexture('owl_frame', 140, 140);
+
+            // Buildings Texture (Taller, No Windows)
+            graphics.clear();
+            graphics.fillStyle(0x1a1a2e); // Dark Blue/Gray
+            for (let i = 0; i < 15; i++) {
+                const h = Phaser.Math.Between(100, 400); // Taller
+                const w = Phaser.Math.Between(40, 100);
+                const x = i * 80;
+                graphics.fillRect(x, 512 - h, w, h);
+                // No Windows
+            }
+            graphics.generateTexture('bg_buildings', 1024, 512);
+
+            // Clouds Texture (Tiny)
+            graphics.clear();
+            graphics.fillStyle(0xFFFFFF);
+            graphics.fillCircle(10, 10, 5);
+            graphics.fillCircle(20, 8, 6);
+            graphics.fillCircle(30, 10, 5);
+            graphics.generateTexture('cloud', 40, 20);
+
+            // Background Texture (Stars/Space)
+            graphics.clear();
+            graphics.fillStyle(0x0f0f1e);
+            graphics.fillRect(0, 0, 512, 512);
+            graphics.fillStyle(0xFFFFFF);
+            for (let i = 0; i < 50; i++) {
+                graphics.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
+            }
+            graphics.generateTexture('bg_stars', 512, 512);
+        }
+
+        function create() {
+            const { width, height } = this.scale;
+
+            // Set bounds
+            this.matter.world.setBounds(0, -100000, width, height + 200000, 64, true, true, false, false);
+            this.matter.world.setGravity(0, gameConfig.gravity);
+
+            // Background (Stars)
+            background = this.add.tileSprite(width / 2, height / 2, width, height, 'bg_stars');
+            background.setScrollFactor(0);
+            background.setDepth(-100);
+
+            // Clouds (Parallax, initially invisible)
+            const clouds = this.add.tileSprite(width / 2, height / 2, width, height, 'cloud');
+            clouds.setScrollFactor(0);
+            clouds.setDepth(-95);
+            clouds.setAlpha(0); // Start invisible
+            clouds.setName('clouds');
+            // Make them sparse
+            clouds.tileScaleX = 1;
+            clouds.tileScaleY = 1;
+
+            // Buildings (Image, not TileSprite, to avoid looping)
+            // Anchored at bottom, moves with parallax
+            const buildings = this.add.image(width / 2, height, 'bg_buildings');
+            buildings.setOrigin(0.5, 1); // Bottom center
+            buildings.setScrollFactor(0.1); // Moves slowly
+            buildings.setDepth(-90);
+            buildings.setName('buildings');
+
+            // Platform
+            const platform = this.matter.add.image(width / 2, height - 50, 'platform', null, { isStatic: true });
+            platform.setDisplaySize(width, 100);
+            platform.setDepth(5);
+
+            // Crane
+            crane = this.add.image(width / 2, CRANE_Y, 'crane');
+            crane.setDepth(10);
+
+            ropeGraphics = this.add.graphics();
+            ropeGraphics.setDepth(9);
+
+            // UI Elements
+            // Monitor Frame
+            const frameX = width - 80;
+            const frameY = height - 80;
+
+            const owlFrame = this.add.image(frameX, frameY, 'owl_frame');
+            owlFrame.setScrollFactor(0);
+            owlFrame.setDepth(19);
+
+            // Owl inside screen
+            owl = this.add.image(frameX, frameY, 'owl_happy');
+            owl.setScrollFactor(0);
+            owl.setDepth(20);
+            owl.setScale(0.9);
+            owl.setTint(0x88FF88); // Greenish tint for retro monitor effect
+
+            wingSprite = this.add.image(frameX - 30, frameY + 10, 'wing');
+            wingSprite.setScrollFactor(0);
+            wingSprite.setDepth(21);
+            wingSprite.setOrigin(1, 0.5);
+            wingSprite.setTint(0x88FF88);
+
+            const btnText = this.add.text(width - 80, height - 185, 'DROP', {
+                fontFamily: '"Press Start 2P"', fontSize: '14px', color: '#000000'
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(21);
+
+            this.add.text(20, 50, 'ALTURA:', { fontFamily: '"Press Start 2P"', fontSize: '12px', color: '#aaaaaa' }).setScrollFactor(0);
+            this.add.text(20, 70, '0m', { fontFamily: '"Press Start 2P"', fontSize: '16px', color: '#ffffff' }).setName('heightDisplay').setScrollFactor(0);
+
+            const instructionText = this.add.text(width / 2, height - 50, 'CLIQUE PARA SOLTAR', {
+                fontFamily: '"Press Start 2P"',
+                fontSize: '12px',
+                color: '#ffffff'
+            });
+            instructionText.setOrigin(0.5);
+            instructionText.setScrollFactor(0);
+            instructionText.setDepth(30);
+            instructionText.setName('instructionText');
+
+            // Update Restart Button Text
+            const restartBtn = document.getElementById('restart-btn');
+            if (restartBtn) restartBtn.innerText = "TENTAR DE NOVO (ESPAÇO)";
+
+            // Input
+            this.input.on('pointerdown', () => {
+                if (isGameActive && currentBox && !fallingBox) {
+                    dropBox(this);
+
+                    // Animate Wing
+                    this.tweens.add({ targets: wingSprite, angle: -45, duration: 100, yoyo: true });
+                }
+            });
+
+            // Keyboard Shortcuts
+            this.input.keyboard.on('keydown-SPACE', () => {
+                console.log('SPACE pressed');
+                console.log('State:', { isGameActive, currentBox: !!currentBox, fallingBox: !!fallingBox });
+
+                if (isGameActive && currentBox && !fallingBox) {
+                    console.log('Action: Drop Box');
+                    dropBox(this);
+                    this.tweens.add({
+                        targets: wingSprite,
+                        angle: -45,
+                        x: frameX + 30,
+                        y: frameY + 40,
+                        duration: 100,
+                        yoyo: true,
+                        onComplete: () => {
+                            wingSprite.setPosition(frameX - 30, frameY + 10);
+                        }
+                    });
+                } else {
+                    // Global Space Handler
+                    const startScreen = document.getElementById('start-screen');
+                    const gameOverScreen = document.getElementById('game-over-screen');
+
+                    // Check visibility
+                    // Note: .style.display might be empty string if set via CSS class
+                    const startScreenVisible = startScreen && getComputedStyle(startScreen).display !== 'none';
+                    const gameOverVisible = gameOverScreen && !gameOverScreen.classList.contains('hidden');
+
+                    console.log('Screens:', { startScreenVisible, gameOverVisible });
+
+                    if (startScreenVisible) {
+                        console.log('Action: Start Game (from Start Screen)');
+                        startGame();
+                    } else if (gameOverVisible) {
+                        console.log('Action: Start Game (from Game Over)');
+                        startGame();
+                    }
+                }
+            });
+
+            this.input.keyboard.on('keydown-ENTER', () => {
+                console.log('ENTER pressed');
+                const gameOverScreen = document.getElementById('game-over-screen');
+                const gameOverVisible = gameOverScreen && !gameOverScreen.classList.contains('hidden');
+
+                console.log('State:', { isGameActive, gameOverVisible });
+
+                if (!isGameActive && gameOverVisible) {
+                    console.log('Action: Start Game (from Game Over)');
+                    startGame();
+                }
+            });// Collision (Freeze Logic & Game Over)
+            this.matter.world.on('collisionstart', (event) => {
+                event.pairs.forEach(pair => {
+                    const bodyA = pair.bodyA;
+                    const bodyB = pair.bodyB;
+
+                    // Check for Game Over condition: Box hitting the platform when it's not the first box
+                    if (bodyA.gameObject === platform || bodyB.gameObject === platform) {
+                        const otherBody = bodyA.gameObject === platform ? bodyB : bodyA;
+                        if (otherBody && otherBody.gameObject && boxes.includes(otherBody.gameObject)) {
+                            // If it's NOT the first box (index 0), then it fell on the floor -> Game Over
+                            if (boxes.indexOf(otherBody.gameObject) > 0) {
+                                gameOver();
+                                return; // Stop processing this collision as game is over
+                            }
+                        }
+                    }
+
+                    [bodyA, bodyB].forEach(body => {
+                        if (body.gameObject && boxes.includes(body.gameObject) && !body.isStatic) {
+                            if (!body.gameObject.isFreezing) {
+                                body.gameObject.isFreezing = true;
+                                this.time.delayedCall(1000, () => {
+                                    if (body.gameObject && body.gameObject.body) {
+                                        if (body.speed < 0.5 && Math.abs(body.angularVelocity) < 0.05) {
+                                            body.gameObject.setStatic(true);
+                                            body.gameObject.setRotation(0);
+                                        } else {
+                                            body.gameObject.isFreezing = false;
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    });
+                });
+            });
+
+            this.scene.pause();
+        }
+
+        function update(time, delta) {
+            if (!isGameActive) return;
+
+            const { width, height } = this.scale;
+
+            // Scroll Backgrounds
+            background.tilePositionY = this.cameras.main.scrollY * 0.1;
+
+            // Buildings: Image with scrollFactor handles itself. No manual update needed.
+
+            // Clouds: Fade in and scroll
+            const clouds = this.children.getByName('clouds');
+            if (clouds) {
+                // Parallax scroll for texture
+                clouds.tilePositionY = this.cameras.main.scrollY * 0.5;
+                clouds.tilePositionX += 0.1; // Slow drift
+
+                // Fade in as we go up (0 at 0, 1 at -2000)
+                const altitude = -this.cameras.main.scrollY;
+                clouds.setAlpha(Phaser.Math.Clamp((altitude - 500) / 1000, 0, 0.5)); // Max alpha 0.5
+            }
+
+            // Hide Instruction
+            const instructionText = this.children.getByName('instructionText');
+            if (instructionText) {
+                instructionText.setVisible(this.cameras.main.scrollY === 0);
+            }
+
+            // 1. Game Logic: Spawn new box if falling box is done
+            if (fallingBox) {
+                // If falling box is static (landed)
+                if (fallingBox.body.isStatic) {
+                    fallingBox = null;
+                    spawnBox(this);
+                }
+                // Removed the out of bounds check here, as platform collision handles it now.
+            }
+
+            // 2. Calculate Tower Stats (Height & Stability)
+            let highestStaticY = height - 100; // Start at platform level
+            let totalDeviation = 0;
+            let staticBoxCount = 0;
+
+            boxes.forEach(box => {
+                // Ignore the current box being carried by the crane!
+                if (box !== currentBox) {
+                    // Check for fall (Game Over)
+                    // Fix: Only check if the box is NOT static (i.e., it's falling)
+                    // Static boxes are part of the stack and are allowed to go off-screen
+                    if (!box.body.isStatic && box.y > this.cameras.main.scrollY + height + 200) {
+                        // Only if it's not the first box (which is on the platform)
+                        // But wait, the platform is at height-50.
+                        // If a box falls off the stack, it will go down.
+                        // If it's index > 0 and y > height - 50 + buffer, it missed the stack.
+                        if (boxes.indexOf(box) > 0) {
+                            // console.log('Box fell off stack!');
+                            gameOver();
+                            return;
+                        }
+                    }
+
+                    if (box.body && box.body.isStatic) {
+                        if (box.y < highestStaticY) highestStaticY = box.y;
+                        totalDeviation += Math.abs(box.x - width / 2);
+                        staticBoxCount++;
+                    }
+                }
+            });
+
+            // Update Height UI
+            const towerHeight = Math.max(0, Math.floor((height - 100 - highestStaticY) / 128));
+            const heightText = this.children.getByName('heightDisplay');
+            if (heightText) heightText.setText(towerHeight + 'm');
+
+            // Update Owl Expression
+            const avgDeviation = staticBoxCount > 0 ? totalDeviation / staticBoxCount : 0;
+            if (avgDeviation > 20) { // Threshold for "fear"
+                owl.setTexture('owl_fear');
+            } else {
+                owl.setTexture('owl_happy');
+            }
+
+            // 3. Camera Follow (Lazy Follow)
+            if (!fallingBox) {
+                const minGap = 600; // Increased gap (earlier scroll)
+                const currentCraneY = this.cameras.main.scrollY + 50;
+
+                // If stack is too close to crane (highestStaticY is smaller than craneY + gap)
+                if (highestStaticY < currentCraneY + minGap) {
+                    const targetCamY = highestStaticY - minGap - 50;
+                    this.cameras.main.scrollY += (targetCamY - this.cameras.main.scrollY) * 0.05;
+                }
+            }
+
+            // 4. Crane Position (Always above camera view)
+            // Crane stays at fixed relative position to camera top, or follows tower?
+            // User asked for "topo zero da tela".
+            // So crane.y should be camera.scrollY + offset
+            crane.y = this.cameras.main.scrollY + 50;
+
+            // 5. Rope & Swing
+            ropeGraphics.clear();
+            if (currentBox && currentBox.isCarried) {
+                swingTime += delta * (craneSpeed * 0.0005);
+                const ropeLength = 100;
+                const maxSwingAngle = 1.0;
+                const angle = Math.sin(swingTime) * maxSwingAngle;
+
+                const ropeEndX = crane.x + Math.sin(angle) * ropeLength;
+                const ropeEndY = crane.y + 60 + Math.cos(angle) * ropeLength;
+
+                const boxX = ropeEndX + Math.sin(angle) * 64;
+                const boxY = ropeEndY + Math.cos(angle) * 64;
+
+                currentBox.setPosition(boxX, boxY);
+                currentBox.setRotation(0); // NO ROTATION on crane
+
+                currentBox.swingVelX = (Math.cos(angle) * maxSwingAngle * (craneSpeed * 0.0005 * delta)) * ropeLength;
+                currentBox.swingVelY = 0;
+
+                ropeGraphics.lineStyle(4, 0xffffff);
+                ropeGraphics.beginPath();
+                ropeGraphics.moveTo(crane.x, crane.y + 40);
+                ropeGraphics.lineTo(ropeEndX, ropeEndY);
+                ropeGraphics.strokePath();
+            }
+        }
+
+        function spawnBox(scene) {
+            if (!isGameActive) return;
+            if (currentBox) return;
+
+            // console.log('Spawning new box...');
+
+            const { width } = scene.scale;
+            const colors = [0xFF0000, 0x00FF00, 0x0000FF, 0xFFFF00, 0xFF00FF, 0x00FFFF];
+            const tint = colors[Phaser.Math.Between(0, colors.length - 1)];
+
+            // Spawn at crane position
+            const box = scene.matter.add.image(width / 2, crane.y + 80, 'box');
+            box.setTint(tint);
+            box.setRectangle(128, 128);
+            box.setIgnoreGravity(true); // Ignore gravity while carried
+            box.setDensity(0.01);
+            box.setFriction(0.5);
+            box.setBounce(0.1);
+
+            box.isCarried = true;
+            box.swingVelX = 0;
+            box.swingVelY = 0;
+            box.lastX = box.x;
+            box.lastY = box.y;
+
+            currentBox = box;
+            boxes.push(box);
+            // console.log('Box spawned:', box);
+        }
+
+        function dropBox(scene) {
+            if (!currentBox) return;
+
+            // console.log('Dropping box...');
+
+            currentBox.isCarried = false;
+            currentBox.setIgnoreGravity(false);
+
+            // Fix: Apply the exact swing velocity calculated from position change
+            // Scale it up slightly if needed, as Matter velocity is per step
+            // If swingVelX is px/frame, and Matter updates at 60fps, this should be fine.
+            // Maybe add a small multiplier if it feels too slow.
+            currentBox.setVelocity(currentBox.swingVelX, currentBox.swingVelY);
+
+            fallingBox = currentBox;
+            currentBox = null;
+
+            score++;
+            document.getElementById('score-display').innerText = 'SCORE: ' + score;
+
+            // Increase difficulty
+            const speedIncrease = score * gameConfig.difficultyMultiplier;
+            craneSpeed = gameConfig.baseSpeed + speedIncrease;
+
+            // Spawn next box after delay
+            scene.time.delayedCall(1000, () => {
+                if (isGameActive) spawnBox(scene);
+            });
+        }
+
+        function startGame() {
+            console.log('Starting Game...');
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-over-screen').classList.add('hidden');
+
+            isGameActive = true;
+            score = 0;
+            craneSpeed = gameConfig.baseSpeed;
+
+            if (game) {
+                const scene = game.scene.scenes[0];
+
+                // 1. Destroy all existing boxes
+                boxes.forEach(box => {
+                    if (box) {
+                        scene.matter.world.remove(box);
+                        if (box.destroy) box.destroy();
+                    }
+                });
+                boxes = [];
+
+                // 2. Destroy current/falling boxes if they exist
+                if (currentBox) {
+                    scene.matter.world.remove(currentBox);
+                    if (currentBox.destroy) currentBox.destroy();
+                    currentBox = null;
+                }
+                if (fallingBox) {
+                    scene.matter.world.remove(fallingBox);
+                    if (fallingBox.destroy) fallingBox.destroy();
+                    fallingBox = null;
+                }
+
+                scene.scene.resume();
+                scene.cameras.main.scrollY = 0; // Reset Camera
+                if (background) background.tilePositionY = 0;
+                crane.y = CRANE_Y; // Reset Crane
+
+                document.getElementById('score-display').innerText = 'SCORE: 0';
+
+                // Reset physics gravity in case it changed
+                scene.matter.world.setGravity(0, gameConfig.gravity);
+
+                spawnBox(scene);
+            } else {
+                initGame();
+                // Wait for scene to start then spawn
+                setTimeout(() => {
+                    const scene = game.scene.scenes[0];
+                    scene.scene.resume();
+                    spawnBox(scene);
+                }, 500);
+            }
+        }
+
+        function gameOver() {
+            console.log('Game Over! Final Score:', score);
+            isGameActive = false;
+            document.getElementById('final-score').innerText = 'SCORE: ' + score;
+            document.getElementById('game-over-screen').classList.remove('hidden');
+
+            if (game) {
+                game.scene.scenes[0].scene.pause();
+            }
+        }
+
+        // --- UI & ADMIN LOGIC ---
+
+        document.getElementById('play-btn').addEventListener('click', async () => {
+            await loadGameConfig();
+            startGame();
+        });
+
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            startGame();
+        });
+
+        document.getElementById('save-score-btn').addEventListener('click', async () => {
+            if (!isFirebaseReady) {
+                alert("Firebase não configurado!");
+                return;
+            }
+
+            const provider = new GoogleAuthProvider();
+            try {
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
+
+                await addDoc(collection(db, "scores"), {
+                    uid: user.uid,
+                    displayName: user.displayName,
+                    score: score,
+                    timestamp: Date.now(),
+                    inputLogs: "valid" // Placeholder for anti-cheat logs
+                });
+
+                alert("Recorde salvo com sucesso!");
+            } catch (error) {
+                console.error(error);
+                alert("Erro ao salvar: " + error.message);
+            }
+        });
+
+        // Admin Panel
+        const adminPanel = document.getElementById('admin-panel');
+        const adminControls = document.getElementById('admin-controls');
+
+        document.getElementById('admin-btn').addEventListener('click', () => {
+            adminPanel.style.display = 'flex';
+        });
+
+        document.getElementById('admin-close-btn').addEventListener('click', () => {
+            adminPanel.style.display = 'none';
+        });
+
+        document.getElementById('admin-login-btn').addEventListener('click', () => {
+            const pass = document.getElementById('admin-pass').value;
+            if (pass === "admin123") {
+                adminControls.style.display = 'block';
+                document.getElementById('admin-login-btn').style.display = 'none';
+
+                // Load current values into inputs
+                document.getElementById('cfg-gravity').value = gameConfig.gravity;
+                document.getElementById('cfg-speed').value = gameConfig.baseSpeed;
+                document.getElementById('cfg-diff').value = gameConfig.difficultyMultiplier;
+            } else {
+                alert("Senha Incorreta!");
+            }
+        });
+
+        document.getElementById('save-global-btn').addEventListener('click', async () => {
+            const newConfig = {
+                gravity: parseFloat(document.getElementById('cfg-gravity').value),
+                baseSpeed: parseFloat(document.getElementById('cfg-speed').value),
+                difficultyMultiplier: parseFloat(document.getElementById('cfg-diff').value)
+            };
+
+            // Atualiza localmente sempre
+            gameConfig = newConfig;
+
+            // Aplica gravidade imediatamente se o jogo estiver rodando
+            if (game) {
+                const scene = game.scene.scenes[0];
+                if (scene) {
+                    scene.matter.world.setGravity(0, gameConfig.gravity);
+                }
+            }
+
+            if (!isFirebaseReady) {
+                alert("Modo Offline: Configuração atualizada localmente! (Reinicie a partida para ver efeito na velocidade)");
+                return;
+            }
+
+            try {
+                await setDoc(doc(db, "settings", "gameConfig"), newConfig);
+                alert("Configuração Global Salva no Firebase!");
+            } catch (e) {
+                console.error(e);
+                alert("Erro ao salvar no Firebase. Configuração aplicada apenas localmente.");
+            }
+        });
+
+    </script>
+
+</body>
+
+</html>
