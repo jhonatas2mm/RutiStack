@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranking - Ruti Stack</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0f0f1e;
+            background-image: url('assets/start_screen/background.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            font-family: 'Press Start 2P', cursive;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .title {
+            font-size: 48px;
+            background: linear-gradient(180deg, #00ffff, #0099ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #ffffff;
+        }
+
+        .ranking-table {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            border: 4px solid #00ffff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 255, 255, 0.3);
+        }
+
+        .ranking-header {
+            display: grid;
+            grid-template-columns: 80px 1fr 120px;
+            gap: 20px;
+            padding: 15px;
+            background: rgba(0, 255, 255, 0.2);
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+
+        .ranking-item {
+            display: grid;
+            grid-template-columns: 80px 1fr 120px;
+            gap: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            border-radius: 5px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+
+        .ranking-item:hover {
+            background: rgba(0, 255, 255, 0.1);
+            border-color: #00ffff;
+            transform: translateX(5px);
+        }
+
+        .rank {
+            font-size: 20px;
+            color: #ffd700;
+            text-align: center;
+        }
+
+        .rank.gold {
+            color: #ffd700;
+        }
+
+        .rank.silver {
+            color: #c0c0c0;
+        }
+
+        .rank.bronze {
+            color: #cd7f32;
+        }
+
+        .player-name {
+            font-size: 16px;
+            color: #00ffff;
+        }
+
+        .score {
+            font-size: 16px;
+            color: #fff;
+            text-align: right;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .back-btn {
+            margin-top: 30px;
+            background: transparent;
+            border: 4px solid #fff;
+            box-shadow: 6px 6px 0px #000;
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            padding: 15px 40px;
+            font-size: 16px;
+            cursor: pointer;
+            text-transform: uppercase;
+            text-shadow: 3px 3px 0px #000;
+            transition: transform 0.1s;
+        }
+
+        .back-btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: 2px 2px 0px #000;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 32px;
+            }
+
+            .ranking-header,
+            .ranking-item {
+                grid-template-columns: 60px 1fr 100px;
+                gap: 10px;
+                font-size: 10px;
+            }
+
+            .rank {
+                font-size: 16px;
+            }
+
+            .player-name,
+            .score {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">🏆 RANKING</div>
+            <div class="subtitle">Top jogadores de Ruti Stack</div>
+        </div>
+
+        <div class="ranking-table">
+            <div class="ranking-header">
+                <div>POS</div>
+                <div>JOGADOR</div>
+                <div>SCORE</div>
+            </div>
+            <div id="ranking-list">
+                <div class="loading">Carregando ranking...</div>
+            </div>
+        </div>
+
+        <button class="back-btn" onclick="window.location.href='index.html'">VOLTAR</button>
+    </div>
+
+    <script type="module">
+        // Firebase imports
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+        import { getFirestore, collection, query, orderBy, limit, getDocs } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCAqoowrKPGAjZ5Bd75YqVBpmJN08SgEPA",
+            authDomain: "jogorutistack.firebaseapp.com",
+            projectId: "jogorutistack",
+            storageBucket: "jogorutistack.firebasestorage.app",
+            messagingSenderId: "637906936992",
+            appId: "1:637906936992:web:d0dc3a01d21d8eb3866e26"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Load ranking
+        async function loadRanking() {
+            const rankingList = document.getElementById('ranking-list');
+
+            try {
+                const scoresRef = collection(db, 'scores');
+                const q = query(scoresRef, orderBy('score', 'desc'), limit(50));
+                const querySnapshot = await getDocs(q);
+
+                if (querySnapshot.empty) {
+                    rankingList.innerHTML = '<div class="empty-state">Nenhum score registrado ainda.<br>Seja o primeiro a jogar!</div>';
+                    return;
+                }
+
+                rankingList.innerHTML = '';
+                let position = 1;
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const item = document.createElement('div');
+                    item.className = 'ranking-item';
+
+                    let rankClass = '';
+                    let rankIcon = position;
+                    if (position === 1) {
+                        rankClass = 'gold';
+                        rankIcon = '🥇';
+                    } else if (position === 2) {
+                        rankClass = 'silver';
+                        rankIcon = '🥈';
+                    } else if (position === 3) {
+                        rankClass = 'bronze';
+                        rankIcon = '🥉';
+                    }
+
+                    item.innerHTML = `
+                        <div class="rank ${rankClass}">${rankIcon}</div>
+                        <div class="player-name">${data.playerName || 'ANÔNIMO'}</div>
+                        <div class="score">${data.score}</div>
+                    `;
+
+                    rankingList.appendChild(item);
+                    position++;
+                });
+
+            } catch (error) {
+                console.error('Erro ao carregar ranking:', error);
+                rankingList.innerHTML = '<div class="empty-state">Erro ao carregar ranking.<br>Tente novamente mais tarde.</div>';
+            }
+        }
+
+        // Load on page load
+        loadRanking();
+    </script>
+</body>
+
+</html>
