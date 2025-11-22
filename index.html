@@ -309,15 +309,50 @@
             position: absolute;
             top: 10px;
             right: 10px;
-            font-size: 24px;
+            width: 32px;
+            height: 32px;
             cursor: pointer;
             pointer-events: auto;
             z-index: 1000;
-            opacity: 0.5;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            background: linear-gradient(135deg, #4a6d8c 0%, #2a4d6c 100%);
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5), inset 0 0 5px rgba(255, 255, 255, 0.2);
+            position: relative;
+            font-size: 0;
+        }
+
+        #admin-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 16px;
+            height: 16px;
+            background:
+                linear-gradient(to right, transparent 6px, #00ffff 6px, #00ffff 10px, transparent 10px),
+                linear-gradient(to bottom, transparent 6px, #00ffff 6px, #00ffff 10px, transparent 10px);
+            background-size: 16px 16px;
+        }
+
+        #admin-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(45deg);
+            width: 12px;
+            height: 12px;
+            border: 2px solid #00ffff;
+            background: transparent;
         }
 
         #admin-btn:hover {
             opacity: 1;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.8), inset 0 0 10px rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
         }
 
         /* Admin Palette (Neon Blue Theme) */
@@ -657,7 +692,7 @@
     </div>
 
     <!-- Admin Button & Panel -->
-    <div id="admin-btn">⚙️</div>
+    <div id="admin-btn"></div>
     <div id="admin-panel">
         <div id="admin-controls" class="admin-controls-container">
             <!-- Dynamic Content -->
@@ -705,6 +740,8 @@
             baseSpeed: 2,
             difficultyMultiplier: 0.1
         };
+
+        let isDropping = false; // Flag to prevent double drops
 
         // Fetch Remote Config
         // Fetch Remote Config
@@ -758,6 +795,38 @@
 
             } catch (e) {
                 console.error("Remote config error:", e);
+            }
+        }
+
+        // Load Custom Sprites from Firestore
+        async function loadCustomSprites() {
+            if (!isFirebaseReady) {
+                console.log("Firebase offline - using cached sprites from localStorage");
+                return;
+            }
+
+            try {
+                // Load sprites for each box type
+                for (const boxType of ['normal', 'heavy']) {
+                    const spritesRef = doc(db, "sprites", boxType);
+                    const spritesSnap = await getDoc(spritesRef);
+
+                    if (spritesSnap.exists()) {
+                        const data = spritesSnap.data();
+                        // Support both new (urls) and old (sprites) format
+                        const spriteUrls = data.urls || data.sprites || [];
+
+                        if (spriteUrls.length > 0) {
+                            // Cache in localStorage
+                            localStorage.setItem(`sprites_${boxType}`, JSON.stringify(spriteUrls));
+                            console.log(`Loaded ${spriteUrls.length} sprite URLs from Firestore for ${boxType}`);
+                        }
+                    } else {
+                        console.log(`No remote sprites found for ${boxType}`);
+                    }
+                }
+            } catch (e) {
+                console.error("Error loading sprites from Firestore:", e);
             }
         }
 
@@ -845,6 +914,7 @@
         }
 
         function preload() {
+            this.load.crossOrigin = 'anonymous'; // Fix CORS for Firebase Storage
             const graphics = this.make.graphics({ x: 0, y: 0, add: false });
 
             // Box Texture (Placeholder for Sprite)
@@ -998,9 +1068,35 @@
             graphics.fillRect(0, 0, 512, 512);
             graphics.fillStyle(0xFFFFFF);
             for (let i = 0; i < 50; i++) {
-                graphics.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
+                const x = Phaser.Math.Between(0, 512);
+                const y = Phaser.Math.Between(0, 512);
+                const radius = Phaser.Math.Between(1, 3);
+                graphics.fillCircle(x, y, radius);
             }
             graphics.generateTexture('bg_stars', 512, 512);
+
+            graphics.destroy();
+
+            // Load custom uploaded sprites from localStorage
+            boxTypes.forEach(type => {
+                const customSprites = JSON.parse(localStorage.getItem(`sprites_${type.id}`) || '[]');
+                customSprites.forEach((spriteData, idx) => {
+                    const textureKey = `${type.id}_custom_${idx}`;
+
+                    // Create an image element from base64 data
+                    const img = new Image();
+                    img.onload = () => {
+                        // Check if texture already exists and remove it
+                        if (this.textures.exists(textureKey)) {
+                            this.textures.remove(textureKey);
+                        }
+                        // Add the custom texture to Phaser
+                        this.textures.addImage(textureKey, img);
+                        console.log(`Loaded custom sprite: ${textureKey}`);
+                    };
+                    img.src = spriteData;
+                });
+            });
         }
 
         function create() {
@@ -1099,9 +1195,7 @@
             this.input.on('pointerdown', () => {
                 if (isGameActive && currentBox && !fallingBox) {
                     dropBox(this);
-
-                    // Animate Wing
-                    this.tweens.add({ targets: wingSprite, angle: -45, duration: 100, yoyo: true });
+                    // Wing animation removed
                 }
             });
 
@@ -1113,17 +1207,7 @@
                 if (isGameActive && currentBox && !fallingBox) {
                     console.log('Action: Drop Box');
                     dropBox(this);
-                    this.tweens.add({
-                        targets: wingSprite,
-                        angle: -45,
-                        x: frameX + 30,
-                        y: frameY + 40,
-                        duration: 100,
-                        yoyo: true,
-                        onComplete: () => {
-                            wingSprite.setPosition(frameX - 30, frameY + 10);
-                        }
-                    });
+                    // Wing animation removed
                 } else {
                     // Global Space Handler
                     const startScreen = document.getElementById('start-screen');
@@ -1350,15 +1434,22 @@
                 if (!selectedType) selectedType = boxTypes[0]; // Fallback
             }
 
-            // Select Random Texture from the list
-            const textureList = selectedType.textures || [selectedType.texture]; // Fallback for old config
-            let textureKey = Phaser.Utils.Array.GetRandom(textureList);
+            // Select Texture - prioritize custom uploaded sprites
+            let textureKey;
 
-            // Check for custom texture (if user uploaded one)
-            // Logic update: Custom textures overwrite specific slots.
-            // e.g. box_normal_1_custom
-            if (scene.textures.exists(textureKey + '_custom')) {
-                textureKey = textureKey + '_custom';
+            // Check if there are custom uploaded sprites for this type
+            const customSprites = JSON.parse(localStorage.getItem(`sprites_${selectedType.id}`) || '[]');
+
+            if (customSprites.length > 0) {
+                // Use random custom sprite
+                const randomIdx = Phaser.Math.Between(0, customSprites.length - 1);
+                textureKey = `${selectedType.id}_custom_${randomIdx}`;
+                console.log(`Using custom sprite: ${textureKey}`);
+            } else {
+                // Fall back to default textures
+                const textureList = selectedType.textures || [selectedType.texture];
+                textureKey = Phaser.Utils.Array.GetRandom(textureList);
+                console.log(`Using default sprite: ${textureKey}`);
             }
 
             // Spawn at crane position
@@ -1476,20 +1567,38 @@
 
             const container = document.getElementById('game-over-screen');
 
+            // Get all uploaded sprites from localStorage
+            const normalSprites = JSON.parse(localStorage.getItem('sprites_normal') || '[]');
+            const heavySprites = JSON.parse(localStorage.getItem('sprites_heavy') || '[]');
+            const allSprites = [...normalSprites, ...heavySprites];
+            const useCustomSprites = allSprites.length > 0;
+
             fallingBoxesInterval = setInterval(() => {
                 if (container.classList.contains('hidden')) return;
 
-                const box = document.createElement('div');
+                let box;
+
+                if (useCustomSprites) {
+                    // Use custom sprite images
+                    box = document.createElement('img');
+                    const randomSprite = allSprites[Math.floor(Math.random() * allSprites.length)];
+                    box.src = randomSprite;
+                    box.style.width = (Math.random() * 60 + 30) + 'px'; // 30-90px
+                    box.style.height = 'auto';
+                    box.style.objectFit = 'contain';
+                } else {
+                    // Fallback to white divs
+                    box = document.createElement('div');
+                    const size = Math.random() * 60 + 30; // 30-90px
+                    box.style.width = size + 'px';
+                    box.style.height = size + 'px';
+                    box.style.backgroundColor = '#fff';
+                }
+
                 box.classList.add('falling-box');
-
-                // Random size (tripled: 30-90px)
-                const size = Math.random() * 60 + 30;
-                box.style.width = size + 'px';
-                box.style.height = size + 'px';
-
-                // Random position
+                box.style.opacity = '0.3';
                 box.style.left = Math.random() * 100 + '%';
-                box.style.top = '-100px'; // Start higher up to account for larger size
+                box.style.top = '-100px';
 
                 // Random animation (slower: 5-10s)
                 const duration = Math.random() * 5 + 5;
@@ -1502,7 +1611,7 @@
                     if (box.parentNode) box.parentNode.removeChild(box);
                 }, duration * 1000);
 
-            }, 600); // Spawn every 600ms (slower frequency)
+            }, 600); // Spawn every 600ms
         }
 
         function stopGameOverRain() {
@@ -1609,6 +1718,9 @@
         document.getElementById('play-btn').addEventListener('click', async () => {
             console.log('Play button clicked');
             try {
+                // Load sprites from Firestore
+                await loadCustomSprites();
+
                 // Timeout for config load to prevent hanging
                 const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000));
                 await Promise.race([loadGameConfig(), timeoutPromise]);
@@ -1772,10 +1884,13 @@
                 let spritesHtml = '<div style="display: flex; flex-direction: column; gap: 5px;">';
                 const textures = type.textures || [type.texture]; // Handle migration
 
-                spritesHtml += `
-                    <input type="file" id="upload-${type.id}" accept="image/*" style="display: none;">
-                    <button class="gb-btn" onclick="document.getElementById('upload-${type.id}').click()" style="font-size: 10px; padding: 5px;">Upload</button>
-                `;
+                // For each texture (support multiple), create hidden file input with class and data-key
+                textures.forEach((tex, idx) => {
+                    const inputId = `upload-${type.id}-${idx}`;
+                    spritesHtml += `
+                        <input type="file" id="${inputId}" class="sprite-upload" data-key="${type.id}" style="display: none;" accept="image/*">
+                        <button class="gb-btn" onclick="document.getElementById('${inputId}').click()" style="font-size: 10px; padding: 5px;">Upload</button>`;
+                });
                 spritesHtml += '</div>';
 
                 tr.innerHTML = `
@@ -1798,7 +1913,7 @@
             document.querySelectorAll('.sprite-upload').forEach(input => {
                 input.addEventListener('change', (e) => {
                     const file = e.target.files[0];
-                    const textureKey = e.target.dataset.key;
+                    const textureKey = e.target.dataset.key; // e.g., 'normal' or 'heavy'
                     if (!file) return;
 
                     const reader = new FileReader();
@@ -1810,6 +1925,9 @@
                                 const customKey = textureKey + '_custom';
                                 if (game.textures.exists(customKey)) game.textures.remove(customKey);
                                 game.textures.addImage(customKey, img);
+                                // Update preview image in admin table
+                                const previewImg = document.getElementById(`preview-${textureKey}`);
+                                if (previewImg) previewImg.src = event.target.result;
                                 alert(`Sprite ${textureKey} atualizado!`);
                             }
                         };
@@ -1823,47 +1941,10 @@
 
         // --- DYNAMIC ADMIN PANEL ---
 
-        // Admin Button Logic
+        // Admin Button Logic - Redirect to separate admin page
         document.getElementById('admin-btn').addEventListener('click', () => {
-            console.log('Admin button clicked');
-            document.getElementById('password-overlay').style.display = 'flex'; // Show Overlay
-            document.getElementById('modal-pass').value = '';
-            document.getElementById('modal-pass').focus();
-        });
-
-        // Password Modal Logic
-        document.getElementById('modal-close').addEventListener('click', () => {
-            document.getElementById('password-overlay').style.display = 'none';
-        });
-
-        document.getElementById('modal-confirm').addEventListener('click', async () => {
-            const pass = document.getElementById('modal-pass').value;
-            if (pass === "admin123") { // Hardcoded for now
-                document.getElementById('password-overlay').style.display = 'none';
-
-                // Hide other screens for Full Screen Admin
-                document.getElementById('start-screen').style.display = 'none';
-                document.getElementById('game-container').style.display = 'none';
-                document.getElementById('game-over-screen').classList.add('hidden');
-
-                // Load latest values from Firestore before showing
-                if (isFirebaseReady) {
-                    document.body.style.cursor = 'wait';
-                    await loadGameConfig();
-                    document.body.style.cursor = 'default';
-                }
-
-                // Load values and show panel
-                renderAdminPanel();
-                document.getElementById('cfg-gravity').value = gameConfig.gravity;
-                document.getElementById('cfg-speed').value = gameConfig.baseSpeed;
-                document.getElementById('cfg-diff').value = gameConfig.difficultyMultiplier;
-
-                const adminPanel = document.getElementById('admin-panel');
-                adminPanel.style.display = 'flex';
-            } else {
-                alert("Senha Incorreta!");
-            }
+            console.log('Admin button clicked - redirecting to admin.html');
+            window.location.href = 'admin.html';
         });
 
         // Cancel Button Logic
