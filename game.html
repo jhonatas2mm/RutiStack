@@ -527,7 +527,7 @@
             /* Muted Blue */
         }
 
-        .badge-heavy {
+        .badge-goal {
             background-color: #8c4a4a;
             /* Muted Red */
         }
@@ -896,7 +896,7 @@
 
             try {
                 // Load sprites for each box type
-                for (const boxType of ['normal', 'heavy']) {
+                for (const boxType of ['normal', 'goal']) {
                     const spritesRef = doc(db, "sprites", boxType);
                     const spritesSnap = await getDoc(spritesRef);
 
@@ -959,11 +959,16 @@
         let mascotFace;
         let mascotLever;
         let isMascotVisible = true;
+        const MASCOT_SCALE = 0.5;
+        const MASCOT_MARGIN_RIGHT = 32;
+        const MASCOT_MARGIN_BOTTOM = 16;
+        const MASCOT_LEVER_OFFSET_X = 0.72; // relative to body width
+        const MASCOT_LEVER_OFFSET_Y = -8;
 
         // Dynamic Sprite Storage
         let availableSprites = {
             normal: [],
-            heavy: []
+            goal: []
         };
 
         // Box Configuration (Data-Driven)
@@ -971,12 +976,13 @@
         let defaultBoxTypes = [
             {
                 id: 'normal_square',
+                category: 'normal',
                 name: 'Normal Quadrada',
                 chance: 45,
-                textures: ['box_normal_1', 'box_normal_2', 'box_normal_3'],
-                width: 128,
-                height: 128,
-                density: 0.01,
+                textures: ['normal_1', 'normal_2', 'normal_3'],
+                width: 430,
+                height: 430,
+                densityRange: [0.009, 0.011],
                 friction: 0.5,
                 bounce: 0.1,
                 variations: 1,
@@ -984,39 +990,42 @@
             },
             {
                 id: 'normal_rect',
+                category: 'normal',
                 name: 'Normal Retangular',
                 chance: 45,
-                textures: ['box_normal_1', 'box_normal_2', 'box_normal_3'],
-                width: 180,
-                height: 80,
-                density: 0.01,
+                textures: ['normal_1', 'normal_2', 'normal_3'],
+                width: 430,
+                height: 241,
+                densityRange: [0.009, 0.011],
                 friction: 0.5,
                 bounce: 0.1,
                 variations: 1,
                 sizeIncrement: 0
             },
             {
-                id: 'heavy_square',
-                name: 'Pesada Quadrada',
+                id: 'goal_square',
+                category: 'goal',
+                name: 'Meta Quadrada',
                 chance: 5,
-                textures: ['box_heavy_1', 'box_heavy_2'],
-                width: 128,
-                height: 128,
-                density: 0.03,
-                friction: 0.6,
+                textures: ['goal_square'],
+                width: 430,
+                height: 430,
+                densityRange: [0.035, 0.045],
+                friction: 0.55,
                 bounce: 0.05,
                 variations: 1,
                 sizeIncrement: 0
             },
             {
-                id: 'heavy_rect',
-                name: 'Pesada Retangular',
+                id: 'goal_rect',
+                category: 'goal',
+                name: 'Meta Retangular',
                 chance: 5,
-                textures: ['box_heavy_1', 'box_heavy_2'],
-                width: 180,
-                height: 80,
-                density: 0.03,
-                friction: 0.6,
+                textures: ['goal_rect', 'goal_rect_alt1', 'goal_rect_alt2', 'goal_rect_alt3', 'goal_rect_alt4', 'goal_rect_alt5', 'goal_rect_alt6', 'goal_rect_alt7', 'goal_rect_alt8', 'goal_rect_alt9'],
+                width: 430,
+                height: 241,
+                densityRange: [0.035, 0.045],
+                friction: 0.55,
                 bounce: 0.05,
                 variations: 1,
                 sizeIncrement: 0
@@ -1038,12 +1047,38 @@
                     type.textures = [type.texture || 'box'];
                 }
             }
+            if (!type.category) {
+                type.category = type.id && type.id.includes('goal') ? 'goal' : 'normal';
+            }
+            if (!type.densityRange) {
+                const baseDensity = type.density || 0.01;
+                type.densityRange = [baseDensity, baseDensity];
+            }
         });
 
         let ropeGraphics;
         let swingTime = 0;
         let buttonSprite;
         let background; // TileSprite
+
+        function applyDifficultyScaling() {
+            craneSpeed = gameConfig.baseSpeed + (score * gameConfig.difficultyMultiplier);
+        }
+
+        function updateScoreUI() {
+            const scoreText = document.getElementById('scoreText');
+            if (scoreText) {
+                scoreText.innerText = `SCORE: ${score}`;
+
+                if (score > 0 && score % 10 === 0) {
+                    scoreText.classList.add('score-milestone');
+                    setTimeout(() => {
+                        scoreText.classList.remove('score-milestone');
+                    }, 500);
+                }
+            }
+            applyDifficultyScaling();
+        }
 
         function initGame() {
             if (game) return;
@@ -1062,11 +1097,25 @@
             const graphics = this.make.graphics({ x: 0, y: 0, add: false });
 
             // Box Textures (Local Assets - Blind Load 1-20)
-            // We try to load a large range. Phaser will log 404s for missing files, but that's expected.
             for (let i = 1; i <= 20; i++) {
                 this.load.image(`normal_${i}`, `assets/sprites/normal/${i}.png`);
-                this.load.image(`heavy_${i}`, `assets/sprites/heavy/${i}.png`);
             }
+            const goalSprites = [
+                'goal_rect',
+                'goal_square',
+                'goal_rect_alt1',
+                'goal_rect_alt2',
+                'goal_rect_alt3',
+                'goal_rect_alt4',
+                'goal_rect_alt5',
+                'goal_rect_alt6',
+                'goal_rect_alt7',
+                'goal_rect_alt8',
+                'goal_rect_alt9'
+            ];
+            goalSprites.forEach(key => {
+                this.load.image(key, `assets/sprites/goal/${key}.png`);
+            });
 
             // 2. Crane (Simple Gray)
             graphics.clear();
@@ -1078,7 +1127,7 @@
 
             // 4. Platform (Full Width & Height)
             graphics.clear();
-            graphics.fillStyle(0x1a1a2e); // Dark blue-gray (main color)
+            graphics.fillStyle(0x00ffff); // Primary color
             graphics.fillRect(0, 0, 2000, 100); // Taller to cover bottom
             graphics.lineStyle(4, 0x00ffff); // Cyan border
             graphics.strokeRect(0, 0, 2000, 100);
@@ -1125,13 +1174,11 @@
             graphics.destroy();
 
             // --- MASCOT ASSETS (Real Sprites) ---
-            // Carrega os sprites reais do mascote que já estão na pasta assets/mascot
-            this.load.image('mascot_body', 'assets/mascot/mascot_body.png');
-            this.load.image('mascot_face_1', 'assets/mascot/mascot_face_1.png'); // face normal
-            this.load.image('mascot_face_2', 'assets/mascot/mascot_face_2.png'); // face worried
-            this.load.image('mascot_face_3', 'assets/mascot/mascot_face_3.png'); // face sad / game over
-            this.load.image('lever_up', 'assets/mascot/lever_up.png');
-            this.load.image('lever_down', 'assets/mascot/lever_down.png');
+            this.load.image('mascot_normal', 'assets/mascot/coruja face 1.png');
+            this.load.image('mascot_worried', 'assets/mascot/coruja face 2.png');
+            this.load.image('mascot_sad', 'assets/mascot/coruja face 3.png');
+            this.load.image('lever_rest', 'assets/mascot/mascot_face_2.png');
+            this.load.image('lever_pull', 'assets/mascot/mascot_face_3.png');
             // Load custom uploaded sprites from localStorage
             // Load custom uploaded sprites from localStorage using Phaser Loader
             // DISABLED TEMPORARILY TO FIX CORS/GAME BUGS
@@ -1153,16 +1200,19 @@
             // DETECT AVAILABLE SPRITES
             // Check which textures actually loaded successfully
             availableSprites.normal = [];
-            availableSprites.heavy = [];
+            availableSprites.goal = [];
 
             for (let i = 1; i <= 20; i++) {
                 if (this.textures.exists(`normal_${i}`)) {
                     availableSprites.normal.push(`normal_${i}`);
                 }
-                if (this.textures.exists(`heavy_${i}`)) {
-                    availableSprites.heavy.push(`heavy_${i}`);
-                }
             }
+            const goalTextureKeys = ['goal_rect', 'goal_square', 'goal_rect_alt1', 'goal_rect_alt2', 'goal_rect_alt3', 'goal_rect_alt4', 'goal_rect_alt5', 'goal_rect_alt6', 'goal_rect_alt7', 'goal_rect_alt8', 'goal_rect_alt9'];
+            goalTextureKeys.forEach(key => {
+                if (this.textures.exists(key)) {
+                    availableSprites.goal.push(key);
+                }
+            });
             console.log("Available Sprites Detected:", availableSprites);
 
             // Fallback if no sprites loaded (prevent crash)
@@ -1174,12 +1224,12 @@
                 graphics.generateTexture('normal_fallback', 128, 128);
                 availableSprites.normal.push('normal_fallback');
             }
-            if (availableSprites.heavy.length === 0) {
+            if (availableSprites.goal.length === 0) {
                 const graphics = this.make.graphics({ x: 0, y: 0, add: false });
                 graphics.fillStyle(0xCCCCCC);
-                graphics.fillRect(0, 0, 180, 80);
-                graphics.generateTexture('heavy_fallback', 180, 80);
-                availableSprites.heavy.push('heavy_fallback');
+                graphics.fillRect(0, 0, 430, 241);
+                graphics.generateTexture('goal_fallback', 430, 241);
+                availableSprites.goal.push('goal_fallback');
             }
 
             // Matter.js World Bounds - Completely disabled to allow boxes to fall off screen
@@ -1219,7 +1269,7 @@
 
             // Update Restart Button Text
             const restartBtn = document.getElementById('restart-btn');
-            if (restartBtn) restartBtn.innerText = "TENTAR DE NOVO (ESPAÇO)";
+            if (restartBtn) restartBtn.innerHTML = 'TENTAR DE NOVO <span class="shortcut-key">[R]</span>';
 
             // Input
             this.input.on('pointerdown', () => {
@@ -1253,26 +1303,8 @@
                     }
                 }
 
-                // console.log('SPACE pressed');
-                // console.log('State:', { isGameActive, currentBox: !!currentBox, fallingBox: !!fallingBox });
-
                 if (isGameActive && currentBox && !fallingBox) {
-                    // console.log('Action: Drop Box');
                     dropBox(this);
-                    // Wing animation removed
-                } else {
-                    // Global Space Handler
-                    const gameOverScreen = document.getElementById('game-over-screen');
-
-                    // Check visibility
-                    const gameOverVisible = gameOverScreen && !gameOverScreen.classList.contains('hidden');
-
-                    // console.log('Screens:', { gameOverVisible });
-
-                    if (gameOverVisible) {
-                        // console.log('Action: Start Game (from Game Over)');
-                        startGame();
-                    }
                 }
             });
 
@@ -1287,7 +1319,17 @@
                     // console.log('Action: Start Game (from Game Over)');
                     startGame();
                 }
-            });// Collision (Freeze Logic & Game Over)
+            });
+
+            this.input.keyboard.on('keydown-R', () => {
+                const gameOverScreen = document.getElementById('game-over-screen');
+                const gameOverVisible = gameOverScreen && !gameOverScreen.classList.contains('hidden');
+                if (!isGameActive && gameOverVisible) {
+                    const restart = document.getElementById('restart-btn');
+                    if (restart) restart.click();
+                }
+            });
+            // Collision (Freeze Logic & Game Over)
             this.matter.world.on('collisionstart', (event) => {
                 event.pairs.forEach(pair => {
                     const bodyA = pair.bodyA;
@@ -1307,8 +1349,8 @@
 
                     [bodyA, bodyB].forEach(body => {
                         if (body.gameObject && boxes.includes(body.gameObject) && !body.isStatic) {
-                            // Heavy Box Impact Animation
-                            if (body.gameObject.boxTypeId === 'heavy' && !body.gameObject.hasImpacted) {
+                            // Heavy/Goal Box Impact Animation
+                            if (body.gameObject.boxCategory === 'goal' && !body.gameObject.hasImpacted) {
                                 body.gameObject.hasImpacted = true;
                                 // Shake camera: duration 200ms, intensity 0.005
                                 this.cameras.main.shake(200, 0.005);
@@ -1318,21 +1360,22 @@
                                 body.gameObject.isFreezing = true;
                                 this.time.delayedCall(1000, () => {
                                     if (body.gameObject && body.gameObject.body) {
-                                        if (body.speed < 0.5 && Math.abs(body.angularVelocity) < 0.05) {
-                                            body.gameObject.setStatic(true);
-                                            body.gameObject.setRotation(0);
-                                            // console.log('Box made static at', body.gameObject.y);
+                                            if (body.speed < 0.5 && Math.abs(body.angularVelocity) < 0.05) {
+                                                body.gameObject.setStatic(true);
+                                                body.gameObject.setRotation(0);
+                                                // console.log('Box made static at', body.gameObject.y);
 
-                                            // Increment Score
-                                            score++;
-                                            const scoreText = document.getElementById('scoreText');
-                                            if (scoreText) scoreText.innerText = `SCORE: ${score}`;
-                                            // console.log('Score updated:', score);
-                                        } else {
-                                            body.gameObject.isFreezing = false;
+                                                // Increment Score
+                                                if (!body.gameObject.hasScored) {
+                                                    body.gameObject.hasScored = true;
+                                                    score++;
+                                                    updateScoreUI();
+                                                }
+                                            } else {
+                                                body.gameObject.isFreezing = false;
+                                            }
                                         }
-                                    }
-                                });
+                                    });
                             }
                         }
                     });
@@ -1497,7 +1540,7 @@
 
             // Select Box Type based on Chance
             // First box always Normal if possible, or just random?
-            // User previously wanted first box not to be heavy.
+            // User previously wanted first box not to be goal/heavy.
             // Let's filter for 'normal' type for first box if it exists.
 
             let selectedType;
@@ -1519,10 +1562,9 @@
             }
 
             // Select Texture - Map new types to existing sprite categories
-            // normal_square/rect -> normal
-            // heavy_square/rect -> heavy
-            const spriteCategory = selectedType.id.includes('heavy') ? 'heavy' : 'normal';
-            const spriteList = availableSprites[spriteCategory] || availableSprites.normal;
+            const spriteCategory = selectedType.category || 'normal';
+            const typeTextures = (selectedType.textures || []).filter(key => scene.textures.exists(key));
+            const spriteList = (typeTextures.length > 0 ? typeTextures : (availableSprites[spriteCategory] || availableSprites.normal));
 
             if (!spriteList || spriteList.length === 0) {
                 console.error('No sprites available for type:', selectedType.id);
@@ -1557,11 +1599,15 @@
             // const texWidth = frame.width;
             // const texHeight = frame.height;
             // box.setRectangle(texWidth, texHeight);
-            box.setDensity(selectedType.density);
+            const density = selectedType.densityRange
+                ? Phaser.Math.FloatBetween(selectedType.densityRange[0], selectedType.densityRange[1])
+                : (selectedType.density || 0.01);
+            box.setDensity(density);
             box.setFriction(selectedType.friction);
             box.setBounce(selectedType.bounce);
 
             box.boxTypeId = selectedType.id; // Store type ID for reference
+            box.boxCategory = spriteCategory;
 
             box.setIgnoreGravity(true); // Ignore gravity while carried
 
@@ -1593,28 +1639,22 @@
             fallingBox = currentBox;
             currentBox = null;
 
-            score++;
-            const scoreText = document.getElementById('scoreText');
-            if (scoreText) {
-                scoreText.innerText = `SCORE: ${score}`;
-
-                // Milestone animation every 10 points
-                if (score > 0 && score % 10 === 0) {
-                    scoreText.classList.add('score-milestone');
-                    setTimeout(() => {
-                        scoreText.classList.remove('score-milestone');
-                    }, 500);
-                }
-            }
-
-            // Increase difficulty
-            const speedIncrease = score * gameConfig.difficultyMultiplier;
-            craneSpeed = gameConfig.baseSpeed + speedIncrease;
-
             // Spawn next box after delay
             scene.time.delayedCall(1000, () => {
                 if (isGameActive) spawnBox(scene);
             });
+        }
+
+        function positionMascot(width, height) {
+            if (!mascotBody) return;
+            const x = width - MASCOT_MARGIN_RIGHT;
+            const y = height - MASCOT_MARGIN_BOTTOM;
+            mascotBody.setOrigin(1, 1).setScale(MASCOT_SCALE).setPosition(x, y);
+            if (mascotLever) {
+                mascotLever.setOrigin(1, 1).setScale(MASCOT_SCALE);
+                const leverX = x - (mascotBody.displayWidth * MASCOT_LEVER_OFFSET_X);
+                mascotLever.setPosition(leverX, y + MASCOT_LEVER_OFFSET_Y);
+            }
         }
 
         function createMascot(scene) {
@@ -1625,53 +1665,52 @@
             }
             isMascotVisible = true;
 
-            const x = scene.scale.width - 150;
-            const y = scene.scale.height - 100;
-
-            // Corpo da coruja
-            mascotBody = scene.add.image(x, y, 'mascot_body').setScrollFactor(0).setDepth(1000);
-            // Face inicial (normal)
-            mascotFace = scene.add.image(x, y, 'mascot_face_1').setScrollFactor(0).setDepth(1001);
+            mascotBody = scene.add.image(0, 0, 'mascot_normal').setScrollFactor(0).setDepth(1000);
+            mascotFace = mascotBody; // reuse body sprite for face swaps
 
             // Alavanca (posicionada à esquerda da coruja)
-            mascotLever = scene.add.image(x - 100, y, 'lever_up').setScrollFactor(0).setDepth(1000);
+            mascotLever = scene.add.image(0, 0, 'lever_rest').setScrollFactor(0).setDepth(1000);
+
+            positionMascot(scene.scale.width, scene.scale.height);
         }
 
         function updateMascotState(scene) {
             if (!isMascotVisible) return;
+            const faceSprite = mascotFace || mascotBody;
+            if (!faceSprite) return;
 
             // Detecta estado de Game Over
             const gameOverScreen = document.getElementById('game-over-screen');
             const gameOverVisible = gameOverScreen && !gameOverScreen.classList.contains('hidden');
             if (gameOverVisible) {
-                mascotFace.setTexture('mascot_face_3'); // sad
+                faceSprite.setTexture('mascot_sad'); // sad
                 return;
             }
 
             // Calcula instabilidade da torre
             if (boxes.length === 0) {
-                mascotFace.setTexture('mascot_face_1'); // normal
+                faceSprite.setTexture('mascot_normal'); // normal
                 return;
             }
             const topBox = boxes[boxes.length - 1];
             const centerX = scene.scale.width / 2;
             const deviation = Math.abs(topBox.x - centerX);
             if (deviation < 30) {
-                mascotFace.setTexture('mascot_face_1'); // normal
+                faceSprite.setTexture('mascot_normal'); // normal
             } else if (deviation < 60) {
-                mascotFace.setTexture('mascot_face_2'); // worried
+                faceSprite.setTexture('mascot_worried'); // worried
             } else {
-                mascotFace.setTexture('mascot_face_2'); // usar a mesma face "worried" para alta instabilidade (ou criar outra se houver)
+                faceSprite.setTexture('mascot_worried'); // usar a mesma face "worried" para alta instabilidade (ou criar outra se houver)
             }
         }
 
         function triggerLever(scene) {
             if (!isMascotVisible) return;
             // Troca a textura da alavanca para o estado "puxada"
-            mascotLever.setTexture('lever_down');
+            mascotLever.setTexture('lever_pull');
             // Volta ao estado "levado" após 200ms
             scene.time.delayedCall(200, () => {
-                if (mascotLever) mascotLever.setTexture('lever_up');
+                if (mascotLever) mascotLever.setTexture('lever_rest');
             });
         }
 
@@ -1716,8 +1755,7 @@
                 if (background) background.tilePositionY = 0;
                 crane.y = CRANE_Y; // Reset Crane
 
-                const scoreText = document.getElementById('scoreText');
-                if (scoreText) scoreText.innerText = 'SCORE: 0';
+                updateScoreUI();
 
                 // Reset physics gravity in case it changed
                 scene.matter.world.setGravity(0, gameConfig.gravity);
@@ -1764,17 +1802,17 @@
                 box.className = 'rain-box';
 
                 // Randomly select a sprite from availableSprites
-                let spriteSrc = '';
-                const allSprites = [...availableSprites.normal, ...availableSprites.heavy];
+                let spriteSrc = 'assets/sprites/normal/1.png';
+                const allSprites = [...availableSprites.normal, ...availableSprites.goal];
 
                 if (allSprites.length > 0) {
                     const randomKey = Phaser.Utils.Array.GetRandom(allSprites);
-                    const parts = randomKey.split('_');
-                    const type = parts[0];
-                    const num = parts[1];
-                    spriteSrc = `assets/sprites/${type}/${num}.png`;
-                } else {
-                    spriteSrc = 'assets/sprites/normal/1.png';
+                    if (randomKey.startsWith('normal_')) {
+                        const num = randomKey.split('_')[1];
+                        spriteSrc = `assets/sprites/normal/${num}.png`;
+                    } else if (randomKey.startsWith('goal')) {
+                        spriteSrc = `assets/sprites/goal/${randomKey}.png`;
+                    }
                 }
 
                 box.src = spriteSrc;
@@ -1943,8 +1981,8 @@
                 } else {
                     document.getElementById('restart-btn').click();
                 }
-            } else if (e.key === ' ' || e.key.toLowerCase() === 'r') {
-                // Shortcut: Space or R to Restart immediately (User Request)
+            } else if (e.key.toLowerCase() === 'r') {
+                // Shortcut: R to Restart immediately
                 document.getElementById('restart-btn').click();
             }
         });
@@ -2146,7 +2184,7 @@
         // }
 
         // handleSpriteUpload('upload-box', 'box');
-        // handleSpriteUpload('upload-box-heavy', 'box_heavy');
+        // handleSpriteUpload('upload-box-goal', 'box_goal');
 
         // Update Save Logic
         // Update Save Logic
@@ -2227,8 +2265,7 @@
                         style="width: 100%; font-size: 16px; background: linear-gradient(180deg, #0099ff, #0066cc); border: 4px solid #003366; color: #fff; box-shadow: 4px 4px 0px #000;">SALVAR
                         <span class="shortcut-key">[ENTER]</span></button>
                     <button class="pixel-btn" id="ranking-btn"
-                        style="width: 100%; font-size: 16px; background: transparent; border: 4px solid #fff; color: #fff; box-shadow: 4px 4px 0px #000; padding: 15px;">RANKING
-                        <span class="shortcut-key">[R]</span></button>
+                        style="width: 100%; font-size: 16px; background: transparent; border: 4px solid #fff; color: #fff; box-shadow: 4px 4px 0px #000; padding: 15px;">RANKING</button>
                 </div>
             </div>
 
@@ -2236,7 +2273,7 @@
             <div style="display: flex; flex-direction: column; gap: 15px; width: 100%;">
                 <button class="pixel-btn" id="restart-btn"
                     style="width: 100%; font-size: 16px; background: transparent; border: 4px solid #fff; color: #fff; box-shadow: 4px 4px 0px #000;">TENTAR
-                    DE NOVO <span class="shortcut-key">[ESPAÇO]</span></button>
+                    DE NOVO <span class="shortcut-key">[R]</span></button>
                 <button class="pixel-btn" onclick="window.location.href='index.html'"
                     style="width: 100%; font-size: 16px; background: transparent; border: 4px solid #fff; color: #fff; box-shadow: 4px 4px 0px #000;">SAIR
                     <span class="shortcut-key">[ESC]</span></button>
@@ -2437,11 +2474,11 @@
 
         // Responsive Resize Listener
         window.addEventListener('resize', () => {
-            if (game) {
-                const width = window.innerWidth;
-                const height = window.innerHeight;
+                if (game) {
+                    const width = window.innerWidth;
+                    const height = window.innerHeight;
 
-                game.scale.resize(width, height);
+                    game.scale.resize(width, height);
 
                 // Update background size if needed
                 if (game.scene.scenes[0] && game.scene.scenes[0].background) {
@@ -2451,22 +2488,19 @@
                     bg.setTileScale(bgScale, bgScale);
                 }
 
-                // Update Mascot Visibility & Position
-                if (mascotBody) {
-                    const isDesktop = width >= 768;
-                    isMascotVisible = isDesktop;
-                    mascotBody.setVisible(isDesktop);
-                    if (mascotLever) mascotLever.setVisible(isDesktop);
+                    // Update Mascot Visibility & Position
+                    if (mascotBody) {
+                        const isDesktop = width >= 768;
+                        isMascotVisible = isDesktop;
+                        mascotBody.setVisible(isDesktop);
+                        if (mascotLever) mascotLever.setVisible(isDesktop);
 
-                    if (isDesktop) {
-                        const x = width - 150;
-                        const y = height - 100;
-                        mascotBody.setPosition(x, y);
-                        if (mascotLever) mascotLever.setPosition(x - 100, y);
+                        if (isDesktop) {
+                            positionMascot(width, height);
+                        }
                     }
                 }
-            }
-        });
+            });
 
     </script>
 </body>
