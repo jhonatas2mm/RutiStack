@@ -954,6 +954,12 @@
         let instructionHidden = false; // Flag to hide instruction only once
         let gameStartTime = Date.now(); // Track game start time for anti-hack logging
 
+        // Mascot Variables
+        let mascotBody;
+        let mascotFace;
+        let mascotLever;
+        let isMascotVisible = true;
+
         // Dynamic Sprite Storage
         let availableSprites = {
             normal: [],
@@ -1118,6 +1124,14 @@
 
             graphics.destroy();
 
+            // --- MASCOT ASSETS (Real Sprites) ---
+            // Carrega os sprites reais do mascote que já estão na pasta assets/mascot
+            this.load.image('mascot_body', 'assets/mascot/mascot_body.png');
+            this.load.image('mascot_face_1', 'assets/mascot/mascot_face_1.png'); // face normal
+            this.load.image('mascot_face_2', 'assets/mascot/mascot_face_2.png'); // face worried
+            this.load.image('mascot_face_3', 'assets/mascot/mascot_face_3.png'); // face sad / game over
+            this.load.image('lever_up', 'assets/mascot/lever_up.png');
+            this.load.image('lever_down', 'assets/mascot/lever_down.png');
             // Load custom uploaded sprites from localStorage
             // Load custom uploaded sprites from localStorage using Phaser Loader
             // DISABLED TEMPORARILY TO FIX CORS/GAME BUGS
@@ -1325,6 +1339,7 @@
                 });
             });
             // Create ends
+            createMascot(this);
             isSceneReady = true;
 
             // Hide loading screen
@@ -1337,6 +1352,8 @@
         }
 
         function update(time, delta) {
+            if (!isSceneReady) return;
+            updateMascotState(this);
             if (!isGameActive) return;
 
             const { width, height } = this.scale;
@@ -1560,6 +1577,7 @@
             if (!currentBox || isDropping) return;
 
             isDropping = true;
+            triggerLever(scene);
             logEvent('DROP_BOX', { x: crane.x, y: crane.y, angle: currentBox.rotation });
 
             currentBox.isCarried = false;
@@ -1596,6 +1614,64 @@
             // Spawn next box after delay
             scene.time.delayedCall(1000, () => {
                 if (isGameActive) spawnBox(scene);
+            });
+        }
+
+        function createMascot(scene) {
+            // Only para desktop
+            if (window.innerWidth < 768) {
+                isMascotVisible = false;
+                return;
+            }
+            isMascotVisible = true;
+
+            const x = scene.scale.width - 150;
+            const y = scene.scale.height - 100;
+
+            // Corpo da coruja
+            mascotBody = scene.add.image(x, y, 'mascot_body').setScrollFactor(0).setDepth(1000);
+            // Face inicial (normal)
+            mascotFace = scene.add.image(x, y, 'mascot_face_1').setScrollFactor(0).setDepth(1001);
+
+            // Alavanca (posicionada à esquerda da coruja)
+            mascotLever = scene.add.image(x - 100, y, 'lever_up').setScrollFactor(0).setDepth(1000);
+        }
+
+        function updateMascotState(scene) {
+            if (!isMascotVisible) return;
+
+            // Detecta estado de Game Over
+            const gameOverScreen = document.getElementById('game-over-screen');
+            const gameOverVisible = gameOverScreen && !gameOverScreen.classList.contains('hidden');
+            if (gameOverVisible) {
+                mascotFace.setTexture('mascot_face_3'); // sad
+                return;
+            }
+
+            // Calcula instabilidade da torre
+            if (boxes.length === 0) {
+                mascotFace.setTexture('mascot_face_1'); // normal
+                return;
+            }
+            const topBox = boxes[boxes.length - 1];
+            const centerX = scene.scale.width / 2;
+            const deviation = Math.abs(topBox.x - centerX);
+            if (deviation < 30) {
+                mascotFace.setTexture('mascot_face_1'); // normal
+            } else if (deviation < 60) {
+                mascotFace.setTexture('mascot_face_2'); // worried
+            } else {
+                mascotFace.setTexture('mascot_face_2'); // usar a mesma face "worried" para alta instabilidade (ou criar outra se houver)
+            }
+        }
+
+        function triggerLever(scene) {
+            if (!isMascotVisible) return;
+            // Troca a textura da alavanca para o estado "puxada"
+            mascotLever.setTexture('lever_down');
+            // Volta ao estado "levado" após 200ms
+            scene.time.delayedCall(200, () => {
+                if (mascotLever) mascotLever.setTexture('lever_up');
             });
         }
 
@@ -1798,7 +1874,7 @@
                 game.scene.pause('default');
             }
 
-            const finalScore = Math.max(0, boxes.length - 1); // Simple score based on boxes
+            const finalScore = score; // Use global score variable
             logEvent('GAME_OVER', { score: finalScore });
             const scoreElement = document.getElementById('final-score');
             if (scoreElement) scoreElement.innerText = 'SCORE: ' + finalScore;
@@ -1952,10 +2028,18 @@
                 playerName = nameFromInputs.toUpperCase();
             }
 
+            // Silent fail if name is too short
             if (playerName.length < 3) {
-                alert("Digite um nome com pelo menos 3 letras!");
                 return;
             }
+
+            // UI Feedback: Saving state
+            const saveBtn = document.getElementById('save-score-btn');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerText = "SALVANDO...";
+            saveBtn.disabled = true;
+            saveBtn.style.opacity = "0.7";
+            saveBtn.style.cursor = "not-allowed";
 
             const newScore = {
                 playerName: playerName,
@@ -1970,42 +2054,41 @@
             highScores = highScores.slice(0, 10); // Keep top 10
             localStorage.setItem('highScores', JSON.stringify(highScores));
 
-            alert(`Recorde Salvo Localmente!\nNome: ${playerName}\nScore: ${score}`);
-
             // Firebase Logic
-            if (!isFirebaseReady) {
-                console.warn("Firebase não está pronto. Score salvo apenas localmente.");
-                return;
+            if (isFirebaseReady) {
+                try {
+                    // Collect anti-hack game log
+                    const gameLog = {
+                        totalBoxes: boxes.length,
+                        finalScore: score,
+                        gameSpeed: craneSpeed,
+                        difficulty: gameConfig.difficultyMultiplier,
+                        gravity: gameConfig.gravity,
+                        playDuration: Math.floor((Date.now() - gameStartTime) / 1000), // seconds
+                        boxTypes: boxes.map(box => box.boxType || 'normal'),
+                        userAgent: navigator.userAgent,
+                        screenResolution: `${window.innerWidth}x${window.innerHeight}`,
+                        timestamp: new Date().toISOString()
+                    };
+
+                    // Add a new document with a generated id.
+                    await addDoc(collection(db, "scores"), {
+                        playerName: playerName,
+                        score: score,
+                        timestamp: new Date().toISOString(),
+                        gameLog: gameLog // Anti-hack data
+                    });
+
+                    // Wait a moment to ensure Firebase write completes
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                } catch (e) {
+                    console.error("Error adding document: ", e);
+                    // Silent fail on firebase error, but still redirect since local save worked
+                }
             }
 
-            try {
-                // Collect anti-hack game log
-                const gameLog = {
-                    totalBoxes: boxes.length,
-                    finalScore: score,
-                    gameSpeed: craneSpeed,
-                    difficulty: gameConfig.difficultyMultiplier,
-                    gravity: gameConfig.gravity,
-                    playDuration: Math.floor((Date.now() - gameStartTime) / 1000), // seconds
-                    boxTypes: boxes.map(box => box.boxType || 'normal'),
-                    userAgent: navigator.userAgent,
-                    screenResolution: `${window.innerWidth}x${window.innerHeight}`,
-                    timestamp: new Date().toISOString()
-                };
-
-                // Add a new document with a generated id.
-                const docRef = await addDoc(collection(db, "scores"), {
-                    playerName: playerName,
-                    score: score,
-                    timestamp: new Date().toISOString(),
-                    gameLog: gameLog // Anti-hack data
-                });
-                // console.log("Document written with ID: ", docRef.id);
-                alert(`Recorde Salvo no Firebase!\nID: ${docRef.id}`);
-            } catch (e) {
-                console.error("Error adding document: ", e);
-                alert("Erro ao salvar no Firebase. Verifique o console.");
-            }
+            // Redirect to Ranking
+            window.location.href = 'ranking.html';
         });
 
         // --- DYNAMIC ADMIN PANEL ---
@@ -2366,6 +2449,21 @@
                     bg.setSize(width, height);
                     const bgScale = Math.max(width / 1440, 1);
                     bg.setTileScale(bgScale, bgScale);
+                }
+
+                // Update Mascot Visibility & Position
+                if (mascotBody) {
+                    const isDesktop = width >= 768;
+                    isMascotVisible = isDesktop;
+                    mascotBody.setVisible(isDesktop);
+                    if (mascotLever) mascotLever.setVisible(isDesktop);
+
+                    if (isDesktop) {
+                        const x = width - 150;
+                        const y = height - 100;
+                        mascotBody.setPosition(x, y);
+                        if (mascotLever) mascotLever.setPosition(x - 100, y);
+                    }
                 }
             }
         });
