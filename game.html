@@ -715,6 +715,36 @@
                 font-size: 16px;
             }
         }
+
+
+
+        .shortcut-key {
+            opacity: 0.6;
+            font-size: 0.8em;
+            margin-left: 8px;
+        }
+
+        @keyframes score-milestone-anim {
+            0% {
+                transform: scale(1);
+                color: #fff;
+            }
+
+            50% {
+                transform: scale(1.5);
+                color: #ffd700;
+                text-shadow: 0 0 20px #ffd700;
+            }
+
+            100% {
+                transform: scale(1);
+                color: #fff;
+            }
+        }
+
+        .score-milestone {
+            animation: score-milestone-anim 0.5s ease-in-out;
+        }
     </style>
 </head>
 
@@ -722,7 +752,7 @@
 
     <!-- Loading Screen -->
     <div id="loading-screen"
-        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url('assets/background/bg_digital.png'); background-size: cover; background-position: center; display: flex; justify-content: center; align-items: center; z-index: 99999; flex-direction: column; gap: 30px;">
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #0f0f1e; background-image: url('assets/background/bg_digital.png'); background-size: cover; background-position: center; display: flex; justify-content: center; align-items: center; z-index: 99999; flex-direction: column; gap: 30px;">
         <div
             style="background: rgba(15, 15, 30, 0.8); padding: 40px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 30px;">
             <img src="assets/sprites/normal/1.png" alt="Loading"
@@ -743,12 +773,13 @@
         SCORE: 0
     </div>
 
-    <!-- Exit Button (Top Right) -->
+    <!-- Exit Button (Top Right - Secondary Style) -->
     <button id="exit-btn"
-        style="position: fixed; top: 20px; right: 20px; z-index: 999; background: rgba(255,0,0,0.8); border: 2px solid #ff0000; color: #fff; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-family: 'Press Start 2P'; font-size: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.5); transition: all 0.2s;"
-        onmouseover="this.style.background='rgba(255,0,0,1)'" onmouseout="this.style.background='rgba(255,0,0,0.8)'"
+        style="position: fixed; top: 20px; right: 20px; z-index: 999; background: transparent; border: 2px solid #fff; color: #fff; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-family: 'Press Start 2P'; font-size: 10px; box-shadow: 4px 4px 0px #000; transition: all 0.2s;"
+        onmouseover="this.style.transform='translate(-2px, -2px)'; this.style.boxShadow='6px 6px 0px #000'"
+        onmouseout="this.style.transform='translate(0, 0)'; this.style.boxShadow='4px 4px 0px #000'"
         onclick="window.location.href='index.html'">
-        ✕ SAIR
+        SAIR
     </button>
     <div id="instructionText"
         style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ffffff; font-family: 'Press Start 2P'; font-size: 12px; pointer-events: none; z-index: 50; text-align: center; line-height: 1.5; text-shadow: 2px 2px 0 #000;">
@@ -921,6 +952,7 @@
         let playerName = 'JOG'; // Default player name
         let isSceneReady = false; // Flag to ensure create() has finished
         let instructionHidden = false; // Flag to hide instruction only once
+        let gameStartTime = Date.now(); // Track game start time for anti-hack logging
 
         // Dynamic Sprite Storage
         let availableSprites = {
@@ -932,10 +964,10 @@
         // Box Configuration (Data-Driven)
         let defaultBoxTypes = [
             {
-                id: 'normal',
-                name: 'Caixa Normal',
-                chance: 90,
-                textures: ['box_normal_1', 'box_normal_2', 'box_normal_3'], // Array of texture keys
+                id: 'normal_square',
+                name: 'Normal Quadrada',
+                chance: 45,
+                textures: ['box_normal_1', 'box_normal_2', 'box_normal_3'],
                 width: 128,
                 height: 128,
                 density: 0.01,
@@ -945,13 +977,39 @@
                 sizeIncrement: 0
             },
             {
-                id: 'heavy',
-                name: 'Caixa Pesada',
-                chance: 10,
+                id: 'normal_rect',
+                name: 'Normal Retangular',
+                chance: 45,
+                textures: ['box_normal_1', 'box_normal_2', 'box_normal_3'],
+                width: 180,
+                height: 80,
+                density: 0.01,
+                friction: 0.5,
+                bounce: 0.1,
+                variations: 1,
+                sizeIncrement: 0
+            },
+            {
+                id: 'heavy_square',
+                name: 'Pesada Quadrada',
+                chance: 5,
+                textures: ['box_heavy_1', 'box_heavy_2'],
+                width: 128,
+                height: 128,
+                density: 0.03,
+                friction: 0.6,
+                bounce: 0.05,
+                variations: 1,
+                sizeIncrement: 0
+            },
+            {
+                id: 'heavy_rect',
+                name: 'Pesada Retangular',
+                chance: 5,
                 textures: ['box_heavy_1', 'box_heavy_2'],
                 width: 180,
                 height: 80,
-                density: 0.03, // Increased from 0.015 to make it noticeably heavier
+                density: 0.03,
                 friction: 0.6,
                 bounce: 0.05,
                 variations: 1,
@@ -1235,6 +1293,13 @@
 
                     [bodyA, bodyB].forEach(body => {
                         if (body.gameObject && boxes.includes(body.gameObject) && !body.isStatic) {
+                            // Heavy Box Impact Animation
+                            if (body.gameObject.boxTypeId === 'heavy' && !body.gameObject.hasImpacted) {
+                                body.gameObject.hasImpacted = true;
+                                // Shake camera: duration 200ms, intensity 0.005
+                                this.cameras.main.shake(200, 0.005);
+                            }
+
                             if (!body.gameObject.isFreezing) {
                                 body.gameObject.isFreezing = true;
                                 this.time.delayedCall(1000, () => {
@@ -1420,7 +1485,8 @@
 
             let selectedType;
             if (boxes.length === 0) {
-                selectedType = boxTypes.find(t => t.id === 'normal') || boxTypes[0];
+                // First box: prefer normal_square or normal_rect
+                selectedType = boxTypes.find(t => t.id.includes('normal')) || boxTypes[0];
             } else {
 
                 const totalChance = boxTypes.reduce((sum, t) => sum + t.chance, 0);
@@ -1435,8 +1501,11 @@
                 if (!selectedType) selectedType = boxTypes[0]; // Fallback
             }
 
-            // Select Texture - Random from DETECTED Local Files
-            const spriteList = availableSprites[selectedType.id] || availableSprites.normal;
+            // Select Texture - Map new types to existing sprite categories
+            // normal_square/rect -> normal
+            // heavy_square/rect -> heavy
+            const spriteCategory = selectedType.id.includes('heavy') ? 'heavy' : 'normal';
+            const spriteList = availableSprites[spriteCategory] || availableSprites.normal;
 
             if (!spriteList || spriteList.length === 0) {
                 console.error('No sprites available for type:', selectedType.id);
@@ -1508,7 +1577,17 @@
 
             score++;
             const scoreText = document.getElementById('scoreText');
-            if (scoreText) scoreText.innerText = `SCORE: ${score}`;
+            if (scoreText) {
+                scoreText.innerText = `SCORE: ${score}`;
+
+                // Milestone animation every 10 points
+                if (score > 0 && score % 10 === 0) {
+                    scoreText.classList.add('score-milestone');
+                    setTimeout(() => {
+                        scoreText.classList.remove('score-milestone');
+                    }, 500);
+                }
+            }
 
             // Increase difficulty
             const speedIncrease = score * gameConfig.difficultyMultiplier;
@@ -1561,7 +1640,8 @@
                 if (background) background.tilePositionY = 0;
                 crane.y = CRANE_Y; // Reset Crane
 
-                document.getElementById('score-display').innerText = 'SCORE: 0';
+                const scoreText = document.getElementById('scoreText');
+                if (scoreText) scoreText.innerText = 'SCORE: 0';
 
                 // Reset physics gravity in case it changed
                 scene.matter.world.setGravity(0, gameConfig.gravity);
@@ -1899,11 +1979,26 @@
             }
 
             try {
+                // Collect anti-hack game log
+                const gameLog = {
+                    totalBoxes: boxes.length,
+                    finalScore: score,
+                    gameSpeed: craneSpeed,
+                    difficulty: gameConfig.difficultyMultiplier,
+                    gravity: gameConfig.gravity,
+                    playDuration: Math.floor((Date.now() - gameStartTime) / 1000), // seconds
+                    boxTypes: boxes.map(box => box.boxType || 'normal'),
+                    userAgent: navigator.userAgent,
+                    screenResolution: `${window.innerWidth}x${window.innerHeight}`,
+                    timestamp: new Date().toISOString()
+                };
+
                 // Add a new document with a generated id.
                 const docRef = await addDoc(collection(db, "scores"), {
                     playerName: playerName,
                     score: score,
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
+                    gameLog: gameLog // Anti-hack data
                 });
                 // console.log("Document written with ID: ", docRef.id);
                 alert(`Recorde Salvo no Firebase!\nID: ${docRef.id}`);
@@ -1981,10 +2076,21 @@
 
             const gameOverVisible = gameOverScreen && !gameOverScreen.classList.contains('hidden');
 
-            if (key === ' ' || key === 'Enter') {
-                if (gameOverVisible) {
+            if (gameOverVisible) {
+                if (key === 'Enter') {
+                    // console.log('Global Shortcut: Save Score');
+                    const saveBtn = document.getElementById('save-score-btn');
+                    if (saveBtn) saveBtn.click();
+                    event.preventDefault();
+                } else if (key === ' ') {
                     // console.log('Global Shortcut: Restart Game');
                     startGame();
+                    event.preventDefault();
+                } else if (key === 'r' || key === 'R') {
+                    window.location.href = 'ranking.html';
+                    event.preventDefault();
+                } else if (key === 'Escape') {
+                    window.location.href = 'index.html';
                     event.preventDefault();
                 }
             }
@@ -2033,29 +2139,31 @@
                     <input type="text" maxlength="1" class="char-input" id="char8">
                 </div>
 
-                <button class="pixel-btn" id="save-score-btn"
-                    style="width: 100%; font-size: 18px; background: #4CAF50; border: 4px solid #fff; color: #fff; box-shadow: 4px 4px 0px #000;">SALVAR
-                    SCORE</button>
+                <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
+                    <button class="pixel-btn" id="save-score-btn"
+                        style="width: 100%; font-size: 16px; background: linear-gradient(180deg, #0099ff, #0066cc); border: 4px solid #003366; color: #fff; box-shadow: 4px 4px 0px #000;">SALVAR
+                        <span class="shortcut-key">[ENTER]</span></button>
+                    <button class="pixel-btn" id="ranking-btn"
+                        style="width: 100%; font-size: 16px; background: transparent; border: 4px solid #fff; color: #fff; box-shadow: 4px 4px 0px #000; padding: 15px;">RANKING
+                        <span class="shortcut-key">[R]</span></button>
+                </div>
             </div>
 
             <!-- Group 4: Buttons -->
             <div style="display: flex; flex-direction: column; gap: 15px; width: 100%;">
-                <button class="pixel-btn" id="ranking-btn"
-                    style="width: 100%; font-size: 18px; background: linear-gradient(180deg, #0099ff, #0066cc); border: 4px solid #003366; color: #fff; box-shadow: 4px 4px 0px #000;">🏆
-                    RANKING</button>
                 <button class="pixel-btn" id="restart-btn"
                     style="width: 100%; font-size: 16px; background: transparent; border: 4px solid #fff; color: #fff; box-shadow: 4px 4px 0px #000;">TENTAR
-                    DE NOVO</button>
-                <a href="index.html"
-                    style="text-align: center; color: rgba(255,255,255,0.7); font-size: 12px; text-decoration: none; margin-top: 5px; transition: color 0.2s;"
-                    onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.7)'">Sair</a>
+                    DE NOVO <span class="shortcut-key">[ESPAÇO]</span></button>
+                <button class="pixel-btn" onclick="window.location.href='index.html'"
+                    style="width: 100%; font-size: 16px; background: transparent; border: 4px solid #fff; color: #fff; box-shadow: 4px 4px 0px #000;">SAIR
+                    <span class="shortcut-key">[ESC]</span></button>
             </div>
         </div>
     </div>
 
     <!-- Debug Button (Visible only during game) -->
     <button id="debug-btn" class="hidden"
-        style="position: fixed; top: 20px; left: 20px; z-index: 1000; background: rgba(0,0,0,0.7); border: 2px solid #00ffff; color: #00ffff; padding: 10px 15px; cursor: pointer; border-radius: 5px; font-family: 'Press Start 2P'; font-size: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.5);">
+        style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(0,0,0,0.7); border: 2px solid #00ffff; color: #00ffff; padding: 10px 15px; cursor: pointer; border-radius: 5px; font-family: 'Press Start 2P'; font-size: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.5);">
         ⚙️ CONFIG
     </button>
 
