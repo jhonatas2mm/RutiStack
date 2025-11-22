@@ -179,27 +179,57 @@
 
         @media (max-width: 768px) {
             .admin-header {
-                font-size: 20px;
+                font-size: 18px;
+                padding: 10px;
             }
 
             .section-title {
-                font-size: 14px;
+                font-size: 12px;
             }
 
             .gb-btn {
-                padding: 10px;
-                font-size: 10px;
+                padding: 8px 12px;
+                font-size: 9px;
             }
 
             .admin-table th,
             .admin-table td {
                 padding: 5px;
-                font-size: 10px;
+                font-size: 9px;
+            }
+
+            .admin-table input {
+                padding: 3px;
+                font-size: 9px;
             }
 
             .global-config-row {
                 flex-direction: column;
                 gap: 10px;
+            }
+
+            .admin-controls-container {
+                width: 98%;
+                padding: 10px;
+            }
+
+            .admin-footer {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .admin-footer .gb-btn {
+                width: 100%;
+            }
+
+            /* Make table scrollable on mobile */
+            .table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .admin-table {
+                min-width: 600px;
             }
         }
 
@@ -337,27 +367,6 @@
         </div>
     </div>
 
-    <!-- Sprite Management Modal -->
-    <div id="sprite-modal" class="modal-overlay">
-        <div class="modal-container">
-            <div class="modal-header" id="modal-title">Gerenciar Sprites</div>
-            <div class="modal-body">
-                <input type="file" id="modal-upload" style="display: none;" accept="image/*" multiple>
-                <button class="gb-btn" onclick="document.getElementById('modal-upload').click()"
-                    style="width: 100%; font-size: 12px; padding: 10px; margin-bottom: 15px;">
-                    ➕ ADICIONAR SPRITES
-                </button>
-                <div id="modal-gallery" class="modal-gallery">
-                    <!-- Dynamic sprite previews here -->
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="modal-btn cancel" id="modal-cancel">Cancelar</button>
-                <button class="modal-btn" id="modal-save">Salvar</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
@@ -448,7 +457,9 @@
                 height: 128,
                 density: 0.01,
                 friction: 0.5,
-                bounce: 0.1
+                bounce: 0.1,
+                variations: 1,
+                sizeIncrement: 0
             },
             {
                 id: 'heavy',
@@ -459,7 +470,9 @@
                 height: 180,
                 density: 0.05,
                 friction: 0.7,
-                bounce: 0.05
+                bounce: 0.05,
+                variations: 1,
+                sizeIncrement: 0
             }
         ];
 
@@ -535,10 +548,9 @@
                 </div>
 
                 <div class="admin-footer">
-                    <button id="reset-defaults-btn" class="gb-btn">Resetar Padrões</button>
-                    <button id="admin-cancel-btn" class="gb-btn">Sair</button>
-                    <button id="save-global-btn" class="gb-btn">Salvar Tudo</button>
-                </div>
+                <button class="gb-btn gb-btn-red" onclick="window.location.href='index.html'">Sair</button>
+                <button class="gb-btn" onclick="saveConfig()">Salvar Alterações</button>
+            </div>
             `;
 
             renderBoxTypesTable();
@@ -560,7 +572,8 @@
                         <th>Largura</th>
                         <th>Altura</th>
                         <th>Atrito</th>
-                        <th>Sprites</th>
+                        <th>Variações</th>
+                        <th>Incremento (px)</th>
                     </tr>
                 </thead>
                 <tbody id="admin-table-body"></tbody>
@@ -585,12 +598,8 @@
                     <td><input type="number" class="box-input" data-id="${index}" data-field="width" value="${type.width}"></td>
                     <td><input type="number" class="box-input" data-id="${index}" data-field="height" value="${type.height}"></td>
                     <td><input type="number" class="box-input" data-id="${index}" data-field="friction" step="0.1" value="${type.friction}"></td>
-                    <td>
-                        <button class="gb-btn manage-sprites-btn" data-type-id="${type.id}" data-type-name="${badgeName}" 
-                                style="font-size: 11px; padding: 8px; width: 100%;">
-                            GERENCIAR (${spriteCount})
-                        </button>
-                    </td>
+                    <td><input type="number" class="box-input" data-id="${index}" data-field="variations" value="${type.variations || 1}"></td>
+                    <td><input type="number" class="box-input" data-id="${index}" data-field="sizeIncrement" value="${type.sizeIncrement || 0}"></td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -714,161 +723,50 @@
             document.getElementById('cfg-speed').value = gameConfig.baseSpeed;
             document.getElementById('cfg-diff').value = gameConfig.difficultyMultiplier;
 
-            // Save Button
-            document.getElementById('save-global-btn').addEventListener('click', async () => {
-                const newConfig = {
-                    gravity: parseFloat(document.getElementById('cfg-gravity').value),
-                    baseSpeed: parseFloat(document.getElementById('cfg-speed').value),
-                    difficultyMultiplier: parseFloat(document.getElementById('cfg-diff').value)
-                };
-                gameConfig = newConfig;
-                localStorage.setItem('gameConfig', JSON.stringify(newConfig));
-
-                const rows = document.querySelectorAll('#admin-table-body tr');
-                rows.forEach(row => {
-                    const inputs = row.querySelectorAll('.box-input');
-                    inputs.forEach(input => {
-                        const index = input.dataset.id;
-                        const field = input.dataset.field;
-                        let value = parseFloat(input.value);
-                        if (isNaN(value)) value = 0;
-                        boxTypes[index][field] = value;
-                    });
-                });
-                localStorage.setItem('boxTypes', JSON.stringify(boxTypes));
-
-                if (isFirebaseReady) {
-                    try {
-                        const saveBtn = document.getElementById('save-global-btn');
-                        const originalText = saveBtn.innerText;
-                        saveBtn.innerText = "SALVANDO...";
-                        saveBtn.disabled = true;
-
-                        await setDoc(doc(db, "settings", "gameConfig"), newConfig);
-                        await setDoc(doc(db, "settings", "boxTypes"), { types: boxTypes });
-
-                        alert("Salvo no Firebase e Localmente!");
-                        saveBtn.innerText = originalText;
-                        saveBtn.disabled = false;
-                    } catch (e) {
-                        alert("Salvo localmente. Erro no Firebase: " + e.message);
-                        document.getElementById('save-global-btn').disabled = false;
-                    }
-                } else {
-                    alert("Salvo Localmente (Offline)!");
-                }
-            });
-
-            // Cancel Button
-            document.getElementById('admin-cancel-btn').addEventListener('click', () => {
-                window.location.href = 'index.html';
-            });
-
-            // Reset Defaults
-            document.getElementById('reset-defaults-btn').addEventListener('click', () => {
-                if (confirm("Tem certeza? Isso vai resetar todas as configurações para o padrão original.")) {
-                    localStorage.removeItem('gameConfig');
-                    localStorage.removeItem('boxTypes');
-                    window.location.reload();
-                }
-            });
-
-            // Modal Event Listeners
-            document.getElementById('modal-upload').addEventListener('change', async (e) => {
-                const files = Array.from(e.target.files);
-                if (files.length === 0) return;
-
-                const uploadBtn = document.querySelector('#modal-upload + .gb-btn');
-                if (!uploadBtn) {
-                    console.error('Upload button not found');
-                    return;
-                }
-
-                const originalText = uploadBtn.innerText;
-                uploadBtn.innerText = 'COMPRIMINDO...';
-                uploadBtn.disabled = true;
-
-                try {
-                    for (const file of files) {
-                        // 1. Compress image
-                        const compressedBlob = await compressImage(file);
-                        const compressionRatio = ((1 - compressedBlob.size / file.size) * 100).toFixed(1);
-                        console.log(`✅ ${file.name}: ${(file.size / 1024).toFixed(0)}KB → ${(compressedBlob.size / 1024).toFixed(0)}KB (-${compressionRatio}%)`);
-
-                        // 2. Upload to Firebase Storage
-                        uploadBtn.innerText = 'UPLOADING...';
-                        const timestamp = Date.now();
-                        const randomId = Math.random().toString(36).substring(7);
-                        const fileName = `sprite_${timestamp}_${randomId}.webp`;
-                        const storageRef = ref(storage, `sprites/${currentModalTypeId}/${fileName}`);
-
-                        await uploadBytes(storageRef, compressedBlob);
-                        const url = await getDownloadURL(storageRef);
-
-                        tempSprites.push(url);
-                        console.log(`📤 Uploaded: ${fileName} → ${url.substring(0, 50)}...`);
-                    }
-
-                    renderModalGallery();
-                    uploadBtn.innerText = originalText;
-                    uploadBtn.disabled = false;
-
-                    console.log(`✨ Total: ${files.length} sprite(s) no Storage`);
-                } catch (error) {
-                    console.error('❌ Upload error:', error);
-                    alert('Erro ao fazer upload: ' + error.message);
-                    if (uploadBtn) {
-                        uploadBtn.innerText = originalText;
-                        uploadBtn.disabled = false;
-                    }
-                }
-
-                e.target.value = '';
-            });
-
-            document.getElementById('modal-cancel').addEventListener('click', closeModalFunction);
-
-            document.getElementById('modal-save').addEventListener('click', async () => {
-                if (currentModalTypeId) {
-                    const saveBtn = document.getElementById('modal-save');
-                    const originalText = saveBtn.innerText;
-
-                    try {
-                        saveBtn.innerText = 'SALVANDO...';
-                        saveBtn.disabled = true;
-
-                        // Save to localStorage immediately (cache)
-                        localStorage.setItem(`sprites_${currentModalTypeId}`, JSON.stringify(tempSprites));
-
-                        // Save to Firestore (URLs only, not base64)
-                        if (isFirebaseReady) {
-                            await setDoc(doc(db, "sprites", currentModalTypeId), {
-                                urls: tempSprites, // Array of URLs
-                                count: tempSprites.length,
-                                lastUpdated: new Date().toISOString()
-                            });
-                            console.log(`Saved ${tempSprites.length} sprite URLs to Firestore for ${currentModalTypeId}`);
-                        }
-
-                        // Close modal
-                        closeModalFunction();
-
-                        // Re-render table to update sprite count
-                        renderBoxTypesTable();
-
-                        alert(isFirebaseReady ?
-                            `${tempSprites.length} sprites salvos no Firebase!` :
-                            'Sprites salvos localmente (offline)!');
-                    } catch (e) {
-                        console.error('Error saving sprites:', e);
-                        alert('Erro ao salvar: ' + e.message);
-                    } finally {
-                        saveBtn.innerText = originalText;
-                        saveBtn.disabled = false;
-                    }
-                }
-            });
         });
+
+        // Save Configuration Function (Called by button onclick)
+        // EXPOSED TO GLOBAL SCOPE via window
+        window.saveConfig = async function () {
+            const newConfig = {
+                gravity: parseFloat(document.getElementById('cfg-gravity').value),
+                baseSpeed: parseFloat(document.getElementById('cfg-speed').value),
+                difficultyMultiplier: parseFloat(document.getElementById('cfg-diff').value)
+            };
+            gameConfig = newConfig;
+            localStorage.setItem('gameConfig', JSON.stringify(newConfig));
+
+            const rows = document.querySelectorAll('#admin-table-body tr');
+            rows.forEach(row => {
+                const inputs = row.querySelectorAll('.box-input');
+                inputs.forEach(input => {
+                    const index = input.dataset.id;
+                    const field = input.dataset.field;
+                    let value = parseFloat(input.value);
+                    if (isNaN(value)) value = 0;
+                    boxTypes[index][field] = value;
+                });
+            });
+            localStorage.setItem('boxTypes', JSON.stringify(boxTypes));
+
+            if (isFirebaseReady) {
+                try {
+                    await setDoc(doc(db, "settings", "gameConfig"), newConfig);
+                    await setDoc(doc(db, "settings", "boxTypes"), { types: boxTypes });
+                    alert("✅ Salvo no Firebase e Localmente!");
+                } catch (e) {
+                    alert("⚠️ Salvo localmente. Erro no Firebase: " + e.message);
+                }
+            } else {
+                alert("💾 Salvo Localmente (Offline)!");
+            }
+        }
+
+        // Logout function (used by exit button)
+        // EXPOSED TO GLOBAL SCOPE via window
+        window.logout = function () {
+            window.location.href = 'index.html';
+        }
     </script>
 </body>
 

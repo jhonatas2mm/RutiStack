@@ -1,0 +1,2226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O Equilíbrio da Coruja</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #0f0f1e;
+            font-family: 'Press Start 2P', cursive;
+            overflow: hidden;
+            color: white;
+            user-select: none;
+        }
+
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            position: relative;
+            z-index: 1;
+            /* Below the game-over modal */
+        }
+
+        /* UI Overlay */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .pixel-btn {
+            background-color: #ffcc00;
+            border: 4px solid #fff;
+            box-shadow: 4px 4px 0px #000;
+            color: #000;
+            font-family: 'Press Start 2P', cursive;
+            padding: 15px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            pointer-events: auto;
+            text-transform: uppercase;
+            transition: transform 0.1s;
+        }
+
+        .pixel-btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: 0px 0px 0px #000;
+        }
+
+        .pixel-box {
+            background: rgba(0, 0, 0, 0.8);
+            border: 4px solid #fff;
+            padding: 20px;
+            text-align: center;
+            pointer-events: auto;
+        }
+
+        #score-display {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            /* Moved to right */
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 20px;
+            z-index: 100;
+            text-shadow: 2px 2px 0 #000;
+            pointer-events: none;
+        }
+
+        #height-display {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            /* Moved to right under score */
+            color: #00ffff;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 16px;
+            z-index: 100;
+            text-shadow: 2px 2px 0 #000;
+            pointer-events: none;
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 24px;
+            cursor: pointer;
+            text-transform: uppercase;
+            padding: 10px 30px;
+            /* Add horizontal padding for arrow space */
+            position: relative;
+            transition: color 0.2s;
+            text-align: center;
+            width: auto;
+            /* Fit content */
+            white-space: nowrap;
+        }
+
+        .menu-btn:hover,
+        .menu-btn.selected {
+            color: #00ffff;
+        }
+
+        .menu-btn:hover::before,
+        .menu-btn.selected::before {
+            content: '> ';
+            position: absolute;
+            left: 0px;
+            /* Position at the start of padding */
+            color: #00ffff;
+        }
+
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000a2e;
+            background-image: url('assets/start_screen/background.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+            /* Distribute horizontally */
+            align-items: center;
+            z-index: 10;
+            pointer-events: auto;
+            padding: 0 50px;
+            /* Add padding */
+            box-sizing: border-box;
+        }
+
+        .start-left {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+
+        .start-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            /* height: 80%; Removed */
+            /* flex: 1; Removed */
+            position: relative;
+        }
+
+        .start-right {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+
+        .logo-icon {
+            width: 120px;
+            image-rendering: pixelated;
+            animation: float 3s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+
+        .logo-text {
+            width: 300px;
+            image-rendering: pixelated;
+        }
+
+        .anim-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: balance 2s ease-in-out infinite alternate;
+            transform-origin: bottom center;
+        }
+
+        .char-owl {
+            width: 250px;
+            image-rendering: pixelated;
+            z-index: 2;
+            position: relative;
+            top: 63px;
+            /* Animation removed */
+        }
+
+        /* @keyframes flutter removed */
+
+        /* Updated */
+
+        .char-stack {
+            /* width: 150px; Removed */
+            height: 570px;
+            /* Added */
+            image-rendering: pixelated;
+            /* margin-top: -10px; Removed */
+            /* Synced animation */
+            /* Pivot from bottom */
+        }
+
+        .start-btn {
+            background: linear-gradient(180deg, #ff00cc, #ff6600);
+            border: 4px solid #330066;
+            box-shadow: 6px 6px 0px #000;
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            padding: 25px 50px;
+            /* Larger button */
+            font-size: 28px;
+            cursor: pointer;
+            text-transform: uppercase;
+            text-shadow: 3px 3px 0px #330066;
+            transition: transform 0.1s;
+        }
+
+        .start-btn:active {
+            transform: translate(4px, 4px);
+            box-shadow: 2px 2px 0px #000;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+
+            100% {
+                transform: translateY(0px);
+            }
+        }
+
+        @keyframes balance {
+            0% {
+                transform: rotate(-5deg);
+            }
+
+            100% {
+                transform: rotate(5deg);
+            }
+        }
+
+
+
+        /* Game Over Screen - Modal Overlay - Updated 00:10 */
+        #game-over-screen {
+            position: fixed !important;
+            /* Force fixed positioning */
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: center !important;
+            align-items: center !important;
+            z-index: 10000 !important;
+            pointer-events: auto;
+        }
+
+        .game-over-content {
+            background: rgba(20, 20, 40, 0.95);
+            border: 4px solid #00ffff;
+            /* Primary color (cyan) */
+            padding: 40px;
+            text-align: center;
+            max-width: 600px;
+            /* Increased from 400px to fit longer text */
+            width: 90%;
+            height: auto;
+            /* Auto height based on content */
+            max-height: 80vh;
+            /* Maximum 80% of viewport height */
+            overflow-y: auto;
+            /* Scroll if content is too long */
+            position: relative;
+            z-index: 100 !important;
+            /* High enough to be above falling boxes (z-index: -1) */
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Name Input Styles */
+        #name-input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+            /* Center inputs */
+        }
+
+
+
+        .char-input {
+            width: 40px;
+            height: 50px;
+            background: transparent;
+            border: 2px solid #fff;
+            color: #00ffff;
+            /* Neon Blue */
+            font-family: 'Press Start 2P', cursive;
+            font-size: 24px;
+            text-align: center;
+            text-transform: uppercase;
+            outline: none;
+            caret-color: transparent;
+        }
+
+        .char-input:focus {
+            outline: none;
+            border-color: #00ffff;
+            animation: blink-focus 1s infinite;
+        }
+
+        @keyframes blink-focus {
+
+            0%,
+            100% {
+                border-color: #00ffff;
+            }
+
+            50% {
+                border-color: transparent;
+            }
+        }
+
+        /* Admin Panel */
+        #admin-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            pointer-events: auto;
+            z-index: 1000;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            background: linear-gradient(135deg, #4a6d8c 0%, #2a4d6c 100%);
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5), inset 0 0 5px rgba(255, 255, 255, 0.2);
+            font-size: 0;
+        }
+
+        #admin-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 16px;
+            height: 16px;
+            background:
+                linear-gradient(to right, transparent 6px, #00ffff 6px, #00ffff 10px, transparent 10px),
+                linear-gradient(to bottom, transparent 6px, #00ffff 6px, #00ffff 10px, transparent 10px);
+            background-size: 16px 16px;
+        }
+
+        #admin-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(45deg);
+            width: 12px;
+            height: 12px;
+            border: 2px solid #00ffff;
+            background: transparent;
+        }
+
+        #admin-btn:hover {
+            opacity: 1;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.8), inset 0 0 10px rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+
+        /* Admin Palette (Neon Blue Theme) */
+        :root {
+            --gb-darkest: #000a2e;
+            /* Deep Blue */
+            --gb-dark: #1a1a40;
+            /* Panel/Input BG */
+            --gb-lightest: #00ffff;
+            /* Neon Text/Border */
+            --gb-bg: #0f0f1e;
+            /* Main Overlay BG */
+        }
+
+        #admin-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--gb-bg);
+            z-index: 1001;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            pointer-events: auto;
+            font-family: 'Press Start 2P', cursive;
+            color: var(--gb-lightest);
+            /* Changed to Lightest */
+        }
+
+        #admin-panel input {
+            font-family: 'Press Start 2P', cursive;
+            padding: 5px;
+            margin-bottom: 5px;
+            width: 100%;
+            box-sizing: border-box;
+            background: var(--gb-dark);
+            /* Dark BG for inputs */
+            color: #fff;
+            /* White text for inputs */
+            border: 1px solid var(--gb-lightest);
+            /* Neon border */
+        }
+
+        #admin-panel label {
+            font-size: 12px;
+            color: var(--gb-lightest);
+            /* Changed to Lightest */
+            display: block;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .admin-header {
+            color: var(--gb-lightest);
+            /* Changed to Lightest */
+            font-size: 32px;
+            text-align: left;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+        }
+
+        .section-title {
+            color: var(--gb-lightest);
+            /* Changed to Lightest */
+            font-size: 18px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            text-align: left;
+            border-bottom: 2px solid var(--gb-lightest);
+            /* Changed to Lightest */
+            padding-bottom: 5px;
+            width: 100%;
+        }
+
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 12px;
+            border: 2px solid var(--gb-lightest);
+            /* Changed to Lightest */
+        }
+
+        .admin-table th {
+            text-align: left;
+            padding: 10px;
+            border: 1px solid var(--gb-lightest);
+            background: var(--gb-dark);
+            color: var(--gb-lightest);
+        }
+
+        .admin-table td {
+            padding: 10px;
+            border: 1px solid var(--gb-lightest);
+            vertical-align: middle;
+            background: transparent;
+            color: #fff;
+        }
+
+        .admin-table input {
+            width: 100%;
+            background: var(--gb-dark);
+            border: 1px solid var(--gb-lightest);
+            color: #fff;
+            padding: 5px;
+            font-family: 'Press Start 2P', cursive;
+            box-shadow: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 10px;
+            color: #fff;
+            font-size: 10px;
+            text-transform: uppercase;
+            border: 1px solid #fff;
+            box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.2);
+        }
+
+        .badge-normal {
+            background-color: #4a6d8c;
+            /* Muted Blue */
+        }
+
+        .badge-heavy {
+            background-color: #8c4a4a;
+            /* Muted Red */
+        }
+
+        .admin-footer {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: auto;
+            gap: 20px;
+        }
+
+        .gb-input {
+            width: 100%;
+            background: var(--gb-dark);
+            color: #fff;
+            border: 1px solid var(--gb-lightest);
+            padding: 10px;
+            font-family: 'Press Start 2P';
+            box-shadow: none;
+        }
+
+        .gb-btn {
+            background-color: transparent;
+            border: 2px solid var(--gb-lightest);
+            box-shadow: none;
+            color: var(--gb-lightest);
+            font-family: 'Press Start 2P', cursive;
+            padding: 15px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            text-transform: uppercase;
+            flex: 1;
+            transition: all 0.2s;
+        }
+
+        .gb-btn:hover {
+            background-color: var(--gb-lightest);
+            color: var(--gb-darkest);
+        }
+
+        .gb-btn:active {
+            transform: translate(2px, 2px);
+        }
+
+        /* Responsive Adjustments */
+        .table-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            overflow-x: auto;
+            width: 100%;
+            border: 2px solid var(--gb-darkest);
+            margin-bottom: 20px;
+        }
+
+        .admin-controls-container {
+            width: 95%;
+            height: 95%;
+            display: flex;
+            flex-direction: column;
+            max-width: none;
+            /* Fluid */
+        }
+
+        @media (max-width: 768px) {
+            .admin-header {
+                font-size: 20px;
+            }
+
+            .section-title {
+                font-size: 14px;
+            }
+
+            .gb-btn {
+                padding: 10px;
+                font-size: 10px;
+            }
+
+            .admin-table th,
+            .admin-table td {
+                padding: 5px;
+                font-size: 10px;
+            }
+
+            .global-config-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+
+
+
+        /* Falling Broken Boxes */
+        .falling-box {
+            position: absolute;
+            background-color: #fff;
+            opacity: 0.3;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(110vh) rotate(360deg);
+            }
+        }
+
+        @keyframes pulse-grow {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        @keyframes pulse-shrink {
+
+            0%,
+            100% {
+                transform: scale(1.1);
+            }
+
+            50% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Mobile Responsiveness for Game Over Modal */
+        @media (max-width: 600px) {
+            .game-over-content {
+                padding: 20px;
+                width: 95%;
+                max-height: 90vh;
+            }
+
+            .game-over-content img {
+                width: 70% !important;
+                /* More responsive text images */
+                max-width: 150px !important;
+            }
+
+            #final-score {
+                font-size: 24px !important;
+                margin-bottom: 24px !important;
+            }
+
+            .char-input {
+                width: 30px;
+                height: 40px;
+                font-size: 18px;
+            }
+
+            .pixel-btn {
+                font-size: 14px;
+                padding: 10px;
+            }
+
+            .menu-btn {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url('assets/background/bg_digital.png'); background-size: cover; background-position: center; display: flex; justify-content: center; align-items: center; z-index: 99999; flex-direction: column; gap: 30px;">
+        <div
+            style="background: rgba(15, 15, 30, 0.8); padding: 40px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 30px;">
+            <img src="assets/sprites/normal/1.png" alt="Loading"
+                style="width: 128px; height: 128px; image-rendering: pixelated; animation: spin 2s linear infinite;">
+            <div
+                style="color: #00ffff; font-family: 'Press Start 2P'; font-size: 16px; animation: pulse 1.5s infinite;">
+                CARREGANDO...</div>
+        </div>
+    </div>
+
+    <!-- Game Container -->
+    <div id="game-container"></div>
+
+    <!-- UI Elements -->
+    <div id="score-display">SCORE: 0</div>
+    <!-- Height Display Removed -->
+    <div id="instructionText"
+        style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ffffff; font-family: 'Press Start 2P'; font-size: 12px; pointer-events: none; z-index: 50; text-align: center; line-height: 1.5; text-shadow: 2px 2px 0 #000;">
+        CLIQUE OU ESPAÇO<br>PARA SOLTAR
+    </div>
+
+    <!-- Game Over Screen moved to end of body for z-index -->
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+
+        // --- FIREBASE CONFIGURATION ---
+        // COLE SUA FIREBASE CONFIG AQUI
+        const firebaseConfig = {
+            apiKey: "AIzaSyCOAt0sfrDXeZgRYwA5UuTxayX3rr0ubyY",
+            authDomain: "rutistack-c75f2.firebaseapp.com",
+            projectId: "rutistack-c75f2",
+            storageBucket: "rutistack-c75f2.firebasestorage.app",
+            messagingSenderId: "401193886438",
+            appId: "1:401193886438:web:5279b37e344ecfbbd35127",
+            measurementId: "G-5NW50RJQN7"
+        };
+
+        let app, db, auth;
+        let isFirebaseReady = false;
+
+        try {
+            if (firebaseConfig.apiKey) {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                isFirebaseReady = true;
+                console.log("Firebase initialized.");
+            } else {
+                console.warn("Firebase config missing. Running in offline mode.");
+            }
+        } catch (e) {
+            console.error("Firebase init error:", e);
+        }
+
+        // --- GAME CONFIGURATION ---
+        let gameConfig = {
+            gravity: 1,
+            baseSpeed: 2,
+            difficultyMultiplier: 0.1
+        };
+
+        let isDropping = false; // Flag to prevent double drops
+
+        // Fetch Remote Config
+        // Fetch Remote Config
+        async function loadGameConfig() {
+            // 1. Load Local (Fallback/Cache)
+            const localConfig = localStorage.getItem('gameConfig');
+            if (localConfig) {
+                gameConfig = { ...gameConfig, ...JSON.parse(localConfig) };
+                console.log("Local config loaded (cache):", gameConfig);
+            }
+            const localBoxTypes = localStorage.getItem('boxTypes');
+            if (localBoxTypes) {
+                // boxTypes = JSON.parse(localBoxTypes);
+                // console.log("Local box types loaded (cache):", boxTypes);
+            }
+
+            if (!isFirebaseReady) return;
+
+            try {
+                // 2. Load Global Config from Firestore
+                const configRef = doc(db, "settings", "gameConfig");
+                const configSnap = await getDoc(configRef);
+
+                if (configSnap.exists()) {
+                    const data = configSnap.data();
+                    gameConfig = { ...gameConfig, ...data };
+                    console.log("Remote config loaded:", gameConfig);
+                    localStorage.setItem('gameConfig', JSON.stringify(gameConfig));
+                } else {
+                    // Create default if not exists
+                    await setDoc(configRef, gameConfig);
+                    console.log("Remote config created with defaults.");
+                }
+
+                // 3. Load Box Types from Firestore
+                const boxesRef = doc(db, "settings", "boxTypes");
+                const boxesSnap = await getDoc(boxesRef);
+
+                if (boxesSnap.exists()) {
+                    const data = boxesSnap.data();
+                    if (data.types) {
+                        // boxTypes = data.types;
+                        // console.log("Remote box types loaded:", boxTypes);
+                        // localStorage.setItem('boxTypes', JSON.stringify(boxTypes));
+                    }
+                } else {
+                    // Create default
+                    await setDoc(boxesRef, { types: boxTypes });
+                    console.log("Remote box types created with defaults.");
+                }
+
+            } catch (e) {
+                console.error("Remote config error:", e);
+            }
+        }
+
+        // Load Custom Sprites from Firestore
+        async function loadCustomSprites() {
+            if (!isFirebaseReady) {
+                console.log("Firebase offline - using cached sprites from localStorage");
+                return;
+            }
+
+            try {
+                // Load sprites for each box type
+                for (const boxType of ['normal', 'heavy']) {
+                    const spritesRef = doc(db, "sprites", boxType);
+                    const spritesSnap = await getDoc(spritesRef);
+
+                    if (spritesSnap.exists()) {
+                        const data = spritesSnap.data();
+                        // Support both new (urls) and old (sprites) format
+                        const spriteUrls = data.urls || data.sprites || [];
+
+                        if (spriteUrls.length > 0) {
+                            // Cache in localStorage
+                            localStorage.setItem(`sprites_${boxType}`, JSON.stringify(spriteUrls));
+                            console.log(`Loaded ${spriteUrls.length} sprite URLs from Firestore for ${boxType}`);
+                        }
+                    } else {
+                        console.log(`No remote sprites found for ${boxType}`);
+                    }
+                }
+            } catch (e) {
+                console.error("Error loading sprites from Firestore:", e);
+            }
+        }
+
+        // --- PHASER GAME ---
+        const config = {
+            type: Phaser.AUTO,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            parent: 'game-container',
+            backgroundColor: '#0f0f1e',
+            physics: {
+                default: 'matter',
+                matter: {
+                    gravity: { y: 1 }, // Will be updated by gameConfig
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        let game;
+        let crane;
+        let currentBox = null;
+        let fallingBox = null; // Track the box currently falling
+        let boxes = [];
+        let isGameActive = false;
+        let score = 0;
+        let craneSpeed = 2;
+        const CRANE_Y = -50; // Absolute top (visual offset handled in update)
+        let playerName = 'JOG'; // Default player name
+        let isSceneReady = false; // Flag to ensure create() has finished
+        let instructionHidden = false; // Flag to hide instruction only once
+
+        // Dynamic Sprite Storage
+        let availableSprites = {
+            normal: [],
+            heavy: []
+        };
+
+        // Box Configuration (Data-Driven)
+        // Box Configuration (Data-Driven)
+        let defaultBoxTypes = [
+            {
+                id: 'normal',
+                name: 'Caixa Normal',
+                chance: 90,
+                textures: ['box_normal_1', 'box_normal_2', 'box_normal_3'], // Array of texture keys
+                width: 128,
+                height: 128,
+                density: 0.01,
+                friction: 0.5,
+                bounce: 0.1,
+                variations: 1,
+                sizeIncrement: 0
+            },
+            {
+                id: 'heavy',
+                name: 'Caixa Pesada',
+                chance: 10,
+                textures: ['box_heavy_1', 'box_heavy_2'],
+                width: 180,
+                height: 80,
+                density: 0.03, // Increased from 0.015 to make it noticeably heavier
+                friction: 0.6,
+                bounce: 0.05,
+                variations: 1,
+                sizeIncrement: 0
+            }
+        ];
+
+        // Load box config from local storage or use default
+        // FORCE RESET TO DEFAULTS TO FIX TEXTURE BUGS
+        let boxTypes = JSON.parse(JSON.stringify(defaultBoxTypes));
+        // let boxTypes = JSON.parse(localStorage.getItem('boxTypes')) || JSON.parse(JSON.stringify(defaultBoxTypes));
+
+        // DATA MIGRATION: Ensure 'textures' array exists for old saves
+        boxTypes.forEach(type => {
+            if (!type.textures || type.textures.length === 0) {
+                const def = defaultBoxTypes.find(t => t.id === type.id);
+                if (def) {
+                    type.textures = [...def.textures];
+                } else {
+                    type.textures = [type.texture || 'box'];
+                }
+            }
+        });
+
+        let ropeGraphics;
+        let swingTime = 0;
+        let buttonSprite;
+        let background; // TileSprite
+
+        function initGame() {
+            if (game) return;
+            game = new Phaser.Game(config);
+            // Expose to global scope for debug sidebar
+            window.game = game;
+            window.gameConfig = gameConfig;
+            window.craneSpeed = craneSpeed;
+            window.score = score;
+            window.boxes = boxes;
+            window.defaultBoxTypes = defaultBoxTypes;
+        }
+
+        function preload() {
+            this.load.crossOrigin = 'anonymous'; // Fix CORS for Firebase Storage
+            const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+
+            // Box Textures (Local Assets - Blind Load 1-20)
+            // We try to load a large range. Phaser will log 404s for missing files, but that's expected.
+            for (let i = 1; i <= 20; i++) {
+                this.load.image(`normal_${i}`, `assets/sprites/normal/${i}.png`);
+                this.load.image(`heavy_${i}`, `assets/sprites/heavy/${i}.png`);
+            }
+
+            // 2. Crane (Simple Gray)
+            graphics.clear();
+            graphics.fillStyle(0x888888);
+            graphics.fillRect(0, 0, 20, 100); // Main vertical pole
+            graphics.fillStyle(0x555555);
+            graphics.fillRect(-10, 80, 40, 20); // Bottom weight
+            graphics.generateTexture('crane', 40, 100);
+
+            // 4. Platform (Full Width & Height)
+            graphics.clear();
+            graphics.fillStyle(0x1a1a2e); // Dark blue-gray (main color)
+            graphics.fillRect(0, 0, 2000, 100); // Taller to cover bottom
+            graphics.lineStyle(4, 0x00ffff); // Cyan border
+            graphics.strokeRect(0, 0, 2000, 100);
+            graphics.generateTexture('platform', 2000, 100);
+
+            // 5. Owl (Happy) - Improved
+            graphics.clear();
+            // Body
+            graphics.fillStyle(0x8B4513);
+            graphics.fillRoundedRect(10, 10, 60, 80, 20);
+            // Ears
+            graphics.beginPath();
+            graphics.moveTo(10, 10); graphics.lineTo(0, -10); graphics.lineTo(30, 10);
+            graphics.moveTo(70, 10); graphics.lineTo(80, -10); graphics.lineTo(50, 10);
+            graphics.fillPath();
+            // Belly
+            graphics.fillStyle(0xD2B48C);
+            graphics.fillEllipse(40, 60, 25, 30);
+            // Eyes (Big & Cute)
+            graphics.fillStyle(0xFFFFFF);
+            graphics.fillCircle(25, 35, 12);
+            graphics.fillCircle(55, 35, 12);
+            graphics.fillStyle(0x000000);
+            graphics.fillCircle(25, 35, 5);
+            graphics.fillCircle(55, 35, 5);
+            graphics.fillStyle(0xFFFFFF); // Shine
+            graphics.fillCircle(27, 33, 2);
+            graphics.fillCircle(57, 33, 2);
+            // Wing Texture Removed
+
+            // 6. Owl (Fearful) - Improved
+            graphics.clear();
+            // Body
+            graphics.fillStyle(0x8B4513);
+            // Wing
+            graphics.clear();
+            graphics.fillStyle(0x654321);
+            graphics.fillEllipse(20, 12, 20, 12);
+            graphics.generateTexture('wing', 40, 25);
+
+            // Background Texture (Digital Circuit)
+            this.load.image('bg_digital', 'assets/bg_digital.png');
+
+            graphics.destroy();
+
+            // Load custom uploaded sprites from localStorage
+            // Load custom uploaded sprites from localStorage using Phaser Loader
+            // DISABLED TEMPORARILY TO FIX CORS/GAME BUGS
+            /*
+            boxTypes.forEach(type => {
+                const customSprites = JSON.parse(localStorage.getItem(`sprites_${type.id}`) || '[]');
+                customSprites.forEach((url, idx) => {
+                    const textureKey = `${type.id}_custom_${idx}`;
+                    console.log(`Preloading custom sprite: ${textureKey}`);
+                    this.load.image(textureKey, url);
+                });
+            });
+            */
+        }
+
+        function create() {
+            const { width, height } = this.scale;
+
+            // DETECT AVAILABLE SPRITES
+            // Check which textures actually loaded successfully
+            availableSprites.normal = [];
+            availableSprites.heavy = [];
+
+            for (let i = 1; i <= 20; i++) {
+                if (this.textures.exists(`normal_${i}`)) {
+                    availableSprites.normal.push(`normal_${i}`);
+                }
+                if (this.textures.exists(`heavy_${i}`)) {
+                    availableSprites.heavy.push(`heavy_${i}`);
+                }
+            }
+            console.log("Available Sprites Detected:", availableSprites);
+
+            // Fallback if no sprites loaded (prevent crash)
+            if (availableSprites.normal.length === 0) {
+                // Create a fallback texture if none exist
+                const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+                graphics.fillStyle(0xFFFFFF);
+                graphics.fillRect(0, 0, 128, 128);
+                graphics.generateTexture('normal_fallback', 128, 128);
+                availableSprites.normal.push('normal_fallback');
+            }
+            if (availableSprites.heavy.length === 0) {
+                const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+                graphics.fillStyle(0xCCCCCC);
+                graphics.fillRect(0, 0, 180, 80);
+                graphics.generateTexture('heavy_fallback', 180, 80);
+                availableSprites.heavy.push('heavy_fallback');
+            }
+
+            // Matter.js World Bounds - Completely disabled to allow boxes to fall off screen
+            // No bounds at all = boxes can go anywhere
+            // this.matter.world.setBounds() - commented out intentionally
+            this.matter.world.setGravity(0, gameConfig.gravity);
+
+            // Background (Digital Circuit)
+            // Use TileSprite for repetition
+            background = this.add.tileSprite(width / 2, height / 2, width, height, 'bg_digital');
+            background.setScrollFactor(0); // Fixed to camera, but texture will scroll
+            background.setDepth(-100);
+
+            // Scale background to fit width if needed, or keep original aspect ratio
+            // The image is 1440 wide, screen might be different. 
+            // Let's ensure it covers the width.
+            const bgScale = Math.max(width / 1440, 1);
+            background.setTileScale(bgScale, bgScale);
+
+            // Platform
+            const platform = this.matter.add.image(width / 2, height - 50, 'platform', null, { isStatic: true });
+            platform.setDisplaySize(width, 100);
+            platform.setDepth(5);
+
+            // Crane
+            crane = this.add.image(width / 2, CRANE_Y, 'crane');
+            crane.setDepth(10);
+            crane.setVisible(false); // Hide the crane pole, keep only rope
+
+            ropeGraphics = this.add.graphics();
+            ropeGraphics.setDepth(9);
+
+            // Mark scene as ready
+            isSceneReady = true;
+            console.log('Scene Create Complete. isSceneReady = true');
+            // Owl Frame Removed
+
+            // Update Restart Button Text
+            const restartBtn = document.getElementById('restart-btn');
+            if (restartBtn) restartBtn.innerText = "TENTAR DE NOVO (ESPAÇO)";
+
+            // Input
+            this.input.on('pointerdown', () => {
+                // console.log('Click detected. isGameActive:', isGameActive, 'currentBox:', !!currentBox, 'fallingBox:', !!fallingBox);
+
+                // Hide instruction on first interaction
+                if (!instructionHidden) {
+                    const instruction = document.getElementById('instructionText');
+                    if (instruction) {
+                        instruction.style.display = 'none';
+                        instructionHidden = true;
+                    }
+                }
+
+                if (isGameActive && currentBox && !fallingBox) {
+                    dropBox(this);
+                    // Wing animation removed
+                } else {
+                    // console.log('Click ignored. Conditions not met.');
+                }
+            });
+
+            // Keyboard Shortcuts
+            this.input.keyboard.on('keydown-SPACE', () => {
+                // Hide instruction on first interaction
+                if (!instructionHidden) {
+                    const instruction = document.getElementById('instructionText');
+                    if (instruction) {
+                        instruction.style.display = 'none';
+                        instructionHidden = true;
+                    }
+                }
+
+                // console.log('SPACE pressed');
+                // console.log('State:', { isGameActive, currentBox: !!currentBox, fallingBox: !!fallingBox });
+
+                if (isGameActive && currentBox && !fallingBox) {
+                    // console.log('Action: Drop Box');
+                    dropBox(this);
+                    // Wing animation removed
+                } else {
+                    // Global Space Handler
+                    const gameOverScreen = document.getElementById('game-over-screen');
+
+                    // Check visibility
+                    const gameOverVisible = gameOverScreen && !gameOverScreen.classList.contains('hidden');
+
+                    // console.log('Screens:', { gameOverVisible });
+
+                    if (gameOverVisible) {
+                        // console.log('Action: Start Game (from Game Over)');
+                        startGame();
+                    }
+                }
+            });
+
+            this.input.keyboard.on('keydown-ENTER', () => {
+                // console.log('ENTER pressed');
+                const gameOverScreen = document.getElementById('game-over-screen');
+                const gameOverVisible = gameOverScreen && !gameOverScreen.classList.contains('hidden');
+
+                // console.log('State:', { isGameActive, gameOverVisible });
+
+                if (!isGameActive && gameOverVisible) {
+                    // console.log('Action: Start Game (from Game Over)');
+                    startGame();
+                }
+            });// Collision (Freeze Logic & Game Over)
+            this.matter.world.on('collisionstart', (event) => {
+                event.pairs.forEach(pair => {
+                    const bodyA = pair.bodyA;
+                    const bodyB = pair.bodyB;
+
+                    // Check for Game Over condition: Box hitting the platform when it's not the first box
+                    if (bodyA.gameObject === platform || bodyB.gameObject === platform) {
+                        const otherBody = bodyA.gameObject === platform ? bodyB : bodyA;
+                        if (otherBody && otherBody.gameObject && boxes.includes(otherBody.gameObject)) {
+                            // If it's NOT the first box (index 0), then it fell on the floor -> Game Over
+                            if (boxes.indexOf(otherBody.gameObject) > 0) {
+                                gameOver();
+                                return; // Stop processing this collision as game is over
+                            }
+                        }
+                    }
+
+                    [bodyA, bodyB].forEach(body => {
+                        if (body.gameObject && boxes.includes(body.gameObject) && !body.isStatic) {
+                            if (!body.gameObject.isFreezing) {
+                                body.gameObject.isFreezing = true;
+                                this.time.delayedCall(1000, () => {
+                                    if (body.gameObject && body.gameObject.body) {
+                                        if (body.speed < 0.5 && Math.abs(body.angularVelocity) < 0.05) {
+                                            body.gameObject.setStatic(true);
+                                            body.gameObject.setRotation(0);
+                                        } else {
+                                            body.gameObject.isFreezing = false;
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    });
+                });
+            });
+            // Create ends
+            isSceneReady = true;
+
+            // Hide loading screen
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                loadingScreen.style.display = 'none';
+            }
+
+            this.scene.pause();
+        }
+
+        function update(time, delta) {
+            if (!isGameActive) return;
+
+            const { width, height } = this.scale;
+
+            // Scroll Backgrounds
+            // Move background texture based on camera scroll (Parallax effect)
+            if (background) {
+                background.tilePositionY = this.cameras.main.scrollY * 0.5;
+            }
+
+            // Hide Instruction (respect flag from user interaction)
+            const instructionText = document.getElementById('instructionText');
+            if (instructionText && !instructionHidden) {
+                instructionText.style.display = this.cameras.main.scrollY === 0 ? 'block' : 'none';
+            } else if (instructionText && instructionHidden) {
+                instructionText.style.display = 'none';
+            }
+
+            // 1. Game Logic: Spawn new box if falling box is done
+            if (fallingBox) {
+                // If falling box is static (landed)
+                if (fallingBox.body.isStatic) {
+                    fallingBox = null;
+                    spawnBox(this);
+                }
+                // Removed the out of bounds check here, as platform collision handles it now.
+            }
+
+            // Check if FIRST box (index 0) fell off screen horizontally
+            if (boxes.length > 0 && boxes[0]) {
+                const firstBox = boxes[0];
+                const screenCenterX = width / 2;
+                const maxOffset = width * 0.6; // If first box is more than 60% of screen width away from center, Game Over
+
+                if (Math.abs(firstBox.x - screenCenterX) > maxOffset) {
+                    // console.log('First box fell off screen horizontally! Game Over.');
+                    gameOver();
+                    return;
+                }
+            }
+
+            // 2. Calculate Tower Stats (Height & Stability)
+            let highestStaticY = height - 100; // Start at platform level
+            let totalDeviation = 0;
+            let staticBoxCount = 0;
+
+            boxes.forEach(box => {
+                // Ignore the current box being carried by the crane!
+                if (box !== currentBox) {
+                    // Check for fall (Game Over)
+                    // Fix: Only check if the box is NOT static (i.e., it's falling)
+                    // Static boxes are part of the stack and are allowed to go off-screen
+                    if (!box.body.isStatic && box.y > this.cameras.main.scrollY + height + 200) {
+                        // Only if it's not the first box (which is on the platform)
+                        // But wait, the platform is at height-50.
+                        // If a box falls off the stack, it will go down.
+                        // If it's index > 0 and y > height - 50 + buffer, it missed the stack.
+                        if (boxes.indexOf(box) > 0) {
+                            // console.log('Box fell off stack!');
+                            gameOver();
+                            return;
+                        }
+                    }
+
+                    if (box.body && box.body.isStatic) {
+                        if (box.y < highestStaticY) highestStaticY = box.y;
+                        totalDeviation += Math.abs(box.x - width / 2);
+                        staticBoxCount++;
+                    }
+                }
+            });
+
+            // Update Height UI
+            const towerHeight = Math.max(0, Math.floor((height - 100 - highestStaticY) / 128));
+            const heightText = document.getElementById('height-display');
+            if (heightText) heightText.innerText = 'ALTURA: ' + towerHeight + 'm';
+
+            // 3. Camera Follow (Lazy Follow)
+            if (!fallingBox) {
+                const minGap = 800; // Increased gap for earlier scroll (was 600)
+                const currentCraneY = this.cameras.main.scrollY + 50;
+
+                // If stack is too close to crane (highestStaticY is smaller than craneY + gap)
+                if (highestStaticY < currentCraneY + minGap) {
+                    const targetCamY = highestStaticY - minGap - 50;
+                    this.cameras.main.scrollY += (targetCamY - this.cameras.main.scrollY) * 0.05;
+                }
+            }
+
+            // 4. Crane Position (Always above camera view)
+            // Crane stays at fixed relative position to camera top, or follows tower?
+            // User asked for "topo zero da tela".
+            // So crane.y should be camera.scrollY
+            crane.y = this.cameras.main.scrollY;
+
+            // 5. Rope & Swing
+            ropeGraphics.clear();
+            if (currentBox && currentBox.isCarried) {
+                swingTime += delta * (craneSpeed * 0.0005);
+                const ropeLength = 250; // Longer rope since it starts from top
+                const maxSwingAngle = 0.6; // Reduced from 1.0 to be less wide
+                const angle = Math.sin(swingTime) * maxSwingAngle;
+
+                const ropeEndX = crane.x + Math.sin(angle) * ropeLength;
+                const ropeEndY = crane.y + Math.cos(angle) * ropeLength;
+
+                const boxX = ropeEndX + Math.sin(angle) * 64;
+                const boxY = ropeEndY + Math.cos(angle) * 64;
+
+                currentBox.setPosition(boxX, boxY);
+                currentBox.setRotation(0); // NO ROTATION on crane
+
+                // Analytical Velocity Calculation (Derivative)
+                // Theta = sin(swingTime) * maxSwingAngle
+                // dTheta/dt = cos(swingTime) * maxSwingAngle * speedFactor
+                const speedFactor = craneSpeed * 0.0005;
+                const dThetaDt = Math.cos(swingTime) * maxSwingAngle * speedFactor; // rad/ms
+
+                // Vx = L * cos(Theta) * dTheta/dt
+                // Vy = -L * sin(Theta) * dTheta/dt
+                // Multiply by 16.66 to convert px/ms to px/frame (Matter.js units)
+                const frameTime = 16.66;
+                currentBox.swingVelX = (ropeLength * Math.cos(angle) * dThetaDt) * frameTime;
+                currentBox.swingVelY = (ropeLength * -Math.sin(angle) * dThetaDt) * frameTime;
+
+                ropeGraphics.lineStyle(4, 0xffffff);
+                ropeGraphics.beginPath();
+                ropeGraphics.moveTo(crane.x, crane.y); // Start exactly at top
+                ropeGraphics.lineTo(ropeEndX, ropeEndY);
+                ropeGraphics.strokePath();
+            }
+        }
+        function spawnBox(scene) {
+            // console.log('spawnBox called. isGameActive:', isGameActive, 'currentBox:', currentBox);
+            if (!isGameActive) return;
+            if (currentBox) return;
+
+            isDropping = false; // Reset drop flag for the new box
+
+            const { width } = scene.scale;
+
+            // Select Box Type based on Chance
+            // First box always Normal if possible, or just random?
+            // User previously wanted first box not to be heavy.
+            // Let's filter for 'normal' type for first box if it exists.
+
+            let selectedType;
+            if (boxes.length === 0) {
+                selectedType = boxTypes.find(t => t.id === 'normal') || boxTypes[0];
+            } else {
+
+                const totalChance = boxTypes.reduce((sum, t) => sum + t.chance, 0);
+                let random = Phaser.Math.Between(0, totalChance);
+                for (const type of boxTypes) {
+                    if (random <= type.chance) {
+                        selectedType = type;
+                        break;
+                    }
+                    random -= type.chance;
+                }
+                if (!selectedType) selectedType = boxTypes[0]; // Fallback
+            }
+
+            // Select Texture - Random from DETECTED Local Files
+            const spriteList = availableSprites[selectedType.id] || availableSprites.normal;
+
+            if (!spriteList || spriteList.length === 0) {
+                console.error('No sprites available for type:', selectedType.id);
+                return;
+            }
+
+            const textureKey = Phaser.Utils.Array.GetRandom(spriteList);
+            // console.log(`Spawning box with texture: ${textureKey}`);
+
+            // Spawn at crane position
+            const box = scene.matter.add.image(width / 2, crane.y + 250, textureKey);
+
+            // Apply Physics Properties
+            // Apply Physics Properties
+            // DYNAMIC PHYSICS: Match body size to BOX TYPE dimensions (User Request)
+            // Calculate size with variation
+            const variations = selectedType.variations || 1;
+            const increment = selectedType.sizeIncrement || 0;
+            const randomVariation = Phaser.Math.Between(0, variations - 1);
+            const sizeOffset = randomVariation * increment;
+
+            const finalWidth = selectedType.width + sizeOffset;
+            const finalHeight = selectedType.height + sizeOffset;
+
+            box.setDisplaySize(finalWidth, finalHeight);
+            // Physics Fix: Slightly smaller body to prevent edge snagging/floating
+            // and add small chamfer for smoother stacking
+            box.setRectangle(finalWidth - 4, finalHeight - 4, { chamfer: { radius: 2 } });
+
+            // const texture = scene.textures.get(textureKey);
+            // const frame = texture.get();
+            // const texWidth = frame.width;
+            // const texHeight = frame.height;
+            // box.setRectangle(texWidth, texHeight);
+            box.setDensity(selectedType.density);
+            box.setFriction(selectedType.friction);
+            box.setBounce(selectedType.bounce);
+
+            box.boxTypeId = selectedType.id; // Store type ID for reference
+
+            box.setIgnoreGravity(true); // Ignore gravity while carried
+
+            box.isCarried = true;
+            box.swingVelX = 0;
+            box.swingVelY = 0;
+
+            currentBox = box;
+            boxes.push(box);
+        }
+
+        function dropBox(scene) {
+            if (!currentBox || isDropping) return;
+
+            isDropping = true;
+            logEvent('DROP_BOX', { x: crane.x, y: crane.y, angle: currentBox.rotation });
+
+            currentBox.isCarried = false;
+            currentBox.setIgnoreGravity(false);
+
+            // Reset velocity to zero before applying swing velocity to prevent physics bugs
+            currentBox.setVelocity(0, 0);
+            currentBox.setAngularVelocity(0);
+
+            // Apply calculated analytical velocity
+            currentBox.setVelocity(currentBox.swingVelX, currentBox.swingVelY);
+
+            fallingBox = currentBox;
+            currentBox = null;
+
+            score++;
+            document.getElementById('score-display').innerText = 'SCORE: ' + score;
+
+            // Increase difficulty
+            const speedIncrease = score * gameConfig.difficultyMultiplier;
+            craneSpeed = gameConfig.baseSpeed + speedIncrease;
+
+            // Spawn next box after delay
+            scene.time.delayedCall(1000, () => {
+                if (isGameActive) spawnBox(scene);
+            });
+        }
+
+        function startGame() {
+            // console.log('Starting Game...');
+            document.getElementById('game-over-screen').classList.add('hidden');
+
+            // Show Debug Button
+            const debugBtn = document.getElementById('debug-btn');
+            if (debugBtn) debugBtn.classList.remove('hidden');
+
+            isGameActive = true;
+            score = 0;
+            craneSpeed = gameConfig.baseSpeed;
+
+            if (game) {
+                const scene = game.scene.scenes[0];
+
+                // 1. Destroy all existing boxes
+                boxes.forEach(box => {
+                    if (box) {
+                        scene.matter.world.remove(box);
+                        if (box.destroy) box.destroy();
+                    }
+                });
+                boxes = [];
+
+                // 2. Destroy current/falling boxes if they exist
+                if (currentBox) {
+                    scene.matter.world.remove(currentBox);
+                    if (currentBox.destroy) currentBox.destroy();
+                    currentBox = null;
+                }
+                if (fallingBox) {
+                    scene.matter.world.remove(fallingBox);
+                    if (fallingBox.destroy) fallingBox.destroy();
+                    fallingBox = null;
+                }
+
+                scene.scene.resume();
+                scene.cameras.main.scrollY = 0; // Reset Camera
+                if (background) background.tilePositionY = 0;
+                crane.y = CRANE_Y; // Reset Crane
+
+                document.getElementById('score-display').innerText = 'SCORE: 0';
+
+                // Reset physics gravity in case it changed
+                scene.matter.world.setGravity(0, gameConfig.gravity);
+
+                spawnBox(scene);
+            } else {
+                initGame();
+                // Wait for scene to start then spawn
+                setTimeout(() => {
+                    const scene = game.scene.scenes[0];
+                    scene.scene.resume();
+                    spawnBox(scene);
+                }, 500);
+            }
+        }
+
+        // --- GAME OVER LOGIC ---
+        let gameOverMenuIndex = 0; // 0: Save, 1: Restart
+        let fallingBoxesInterval = null;
+
+        // Track landed boxes for collision simulation
+        let landedBoxes = [];
+
+        function startGameOverRain() {
+            const container = document.getElementById('game-over-screen');
+
+
+            // Clear existing rain and reset tracking
+            const existingRain = container.querySelectorAll('.rain-box');
+            existingRain.forEach(el => el.remove());
+            landedBoxes = [];
+
+            // Finite number of boxes (TRIPLED: 45-75)
+            const totalBoxes = Math.floor(Math.random() * 31) + 45;
+            let boxesSpawned = 0;
+
+            fallingBoxesInterval = setInterval(() => {
+                if (boxesSpawned >= totalBoxes) {
+                    clearInterval(fallingBoxesInterval);
+                    return;
+                }
+
+                const box = document.createElement('img');
+                box.className = 'rain-box';
+
+                // Randomly select a sprite from availableSprites
+                let spriteSrc = '';
+                const allSprites = [...availableSprites.normal, ...availableSprites.heavy];
+
+                if (allSprites.length > 0) {
+                    const randomKey = Phaser.Utils.Array.GetRandom(allSprites);
+                    const parts = randomKey.split('_');
+                    const type = parts[0];
+                    const num = parts[1];
+                    spriteSrc = `assets/sprites/${type}/${num}.png`;
+                } else {
+                    spriteSrc = 'assets/sprites/normal/1.png';
+                }
+
+                box.src = spriteSrc;
+
+                // Random styling (DOUBLED SIZE: 60-140px)
+                const size = Math.random() * 80 + 60; // 60px to 140px
+                box.style.width = `${size}px`;
+                box.style.height = `${size}px`;
+                box.style.position = 'absolute';
+
+                const leftPos = Math.random() * 85 + 5; // 5% to 90%
+                box.style.left = leftPos + '%';
+                box.style.top = '-150px'; // Start above screen
+                box.style.opacity = '1';
+                box.style.zIndex = '-1';
+                box.style.imageRendering = 'pixelated';
+
+                // Calculate landing height (simulate stacking)
+                let landingHeight = 0; // Default: land on floor
+
+                // Check for "collision" with existing boxes in similar horizontal position
+                for (const landed of landedBoxes) {
+                    const horizontalOverlap = Math.abs(landed.left - leftPos) < 15; // Within 15% range
+                    if (horizontalOverlap && landed.top > landingHeight) {
+                        landingHeight = landed.top; // Stack on top of this box
+                    }
+                }
+
+                const finalTop = `calc(100% - ${size + landingHeight}px)`;
+
+                // Animation - fall DOWN with realistic gravity (no excessive bounce)
+                const duration = Math.random() * 2 + 1.5; // 1.5s to 3.5s
+                box.style.transition = `top ${duration}s ease-in, transform ${duration}s ease-out`;
+                // ease-in for gravity, ease-out for smooth rotation
+
+                container.appendChild(box);
+
+                // Trigger animation - fall to calculated position
+                setTimeout(() => {
+                    box.style.top = finalTop;
+                    const initialRotation = Math.random() * 360;
+                    box.style.transform = `rotate(${initialRotation}deg)`;
+
+                    // After landing, add subtle rolling/settling physics
+                    setTimeout(() => {
+                        // Gentle rotation and minimal drift
+                        const driftDirection = Math.random() > 0.5 ? 1 : -1;
+                        const driftAmount = Math.random() * 1.5; // Reduced: 0-1.5% drift
+                        const finalRotation = initialRotation + (Math.random() * 30 - 15); // Reduced: ±15° extra rotation
+
+                        // Get current left position as number
+                        const currentLeft = parseFloat(box.style.left);
+                        const newLeft = Math.max(0, Math.min(95, currentLeft + (driftDirection * driftAmount)));
+
+                        // Gentle settling animation (subtle roll and drift)
+                        box.style.transition = 'transform 0.5s ease-out, left 0.5s ease-out';
+                        box.style.transform = `rotate(${finalRotation}deg)`;
+                        box.style.left = newLeft + '%';
+                    }, duration * 1000);
+
+                    // Track this box for future collisions
+                    setTimeout(() => {
+                        landedBoxes.push({
+                            left: leftPos,
+                            top: size + landingHeight
+                        });
+                    }, duration * 1000);
+                }, 50);
+
+                boxesSpawned++;
+            }, 80); // Spawn faster (every 80ms)
+        }
+
+        function stopGameOverRain() {
+            if (fallingBoxesInterval) {
+                clearInterval(fallingBoxesInterval);
+                fallingBoxesInterval = null;
+            }
+            // Remove all existing boxes
+            document.querySelectorAll('.falling-box').forEach(el => el.remove());
+        }
+
+        function updateGameOverMenu() {
+            const buttons = [document.getElementById('save-score-btn'), document.getElementById('restart-btn')];
+            buttons.forEach((btn, index) => {
+                if (index === gameOverMenuIndex) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
+            });
+        }
+
+        function gameOver() {
+            isGameActive = false;
+            if (game) {
+                game.scene.pause('default');
+            }
+
+            const finalScore = Math.max(0, boxes.length - 1); // Simple score based on boxes
+            logEvent('GAME_OVER', { score: finalScore });
+            const scoreElement = document.getElementById('final-score');
+            if (scoreElement) scoreElement.innerText = 'SCORE: ' + finalScore;
+
+            // Show/hide clear button based on localStorage
+            const clearBtn = document.getElementById('clear-btn');
+            const savedName = localStorage.getItem('playerName');
+            if (clearBtn) {
+                clearBtn.style.display = savedName ? 'block' : 'none';
+            }
+
+            const gameOverScreen = document.getElementById('game-over-screen');
+            if (gameOverScreen) {
+                gameOverScreen.classList.remove('hidden');
+                gameOverScreen.style.display = 'flex'; // Force display flex
+
+                // Start Rain
+                startGameOverRain();
+
+                // Reset Menu
+                gameOverMenuIndex = 0;
+                updateGameOverMenu();
+            }
+
+            // Focus on first input
+            setTimeout(() => {
+                const firstInput = document.getElementById('char1');
+                if (firstInput) firstInput.focus();
+            }, 100);
+
+            logEvent('GAME_OVER', { score: finalScore });
+        }
+
+        // --- ANTI-HACK LOG SYSTEM ---
+        let gameLog = [];
+
+        function logEvent(action, details = {}) {
+            gameLog.push({
+                ts: Date.now(),
+                action: action,
+                ...details
+            });
+            // console.log('Log:', action, details);
+        }
+
+        // Global Keyboard Listener for Game Over Menu
+        document.addEventListener('keydown', (e) => {
+            const gameOverScreen = document.getElementById('game-over-screen');
+            if (!gameOverScreen || gameOverScreen.classList.contains('hidden')) return;
+
+            // If typing in input, ignore arrows unless they are for navigation between inputs (handled by browser)
+            // But we want to navigate buttons if inputs are NOT focused or if we press Down from inputs?
+            // Let's keep it simple: Up/Down always navigates buttons if we are not typing?
+            // Actually user said "using keyboard keys to change selection".
+
+            if (e.key === 'ArrowUp') {
+                gameOverMenuIndex = (gameOverMenuIndex - 1 + 2) % 2;
+                updateGameOverMenu();
+            } else if (e.key === 'ArrowDown') {
+                gameOverMenuIndex = (gameOverMenuIndex + 1) % 2;
+                updateGameOverMenu();
+            } else if (e.key === 'Enter') {
+                // Trigger selected button
+                if (gameOverMenuIndex === 0) {
+                    document.getElementById('save-score-btn').click();
+                } else {
+                    document.getElementById('restart-btn').click();
+                }
+            } else if (e.key === ' ' || e.key.toLowerCase() === 'r') {
+                // Shortcut: Space or R to Restart immediately (User Request)
+                document.getElementById('restart-btn').click();
+            }
+        });
+
+        // --- UI & ADMIN LOGIC ---
+
+        // --- UI & ADMIN LOGIC ---
+
+        // Auto-start logic for game.html
+        window.onload = async () => {
+            // console.log('Game page loaded. Auto-starting...');
+
+            // Retrieve player name from localStorage or default
+            playerName = localStorage.getItem('playerName') || 'JOG';
+
+            try {
+                // Load sprites from Firestore
+                await loadCustomSprites();
+
+                // Timeout for config load to prevent hanging
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000));
+                await Promise.race([loadGameConfig(), timeoutPromise]);
+            } catch (e) {
+                console.warn('Config load skipped or failed:', e);
+            }
+
+            // Ensure game variable is initialized if not already
+            if (typeof game === 'undefined' || !game) {
+                initGame();
+                // Wait for game AND scene to be ready before starting
+                const checkGameReady = setInterval(() => {
+                    if (game && isSceneReady) {
+                        clearInterval(checkGameReady);
+                        // console.log('Game and Scene ready, calling startGame...');
+                        startGame();
+                    }
+                }, 100);
+            } else {
+                // console.log('Game already initialized, calling startGame...');
+                startGame();
+            }
+        };
+
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            startGame();
+        });
+
+        // Name Input Logic
+        const nameInputs = document.querySelectorAll('.char-input');
+        nameInputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                if (input.value.length === 1) {
+                    if (index < nameInputs.length - 1) nameInputs[index + 1].focus();
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && input.value.length === 0) {
+                    if (index > 0) nameInputs[index - 1].focus();
+                }
+            });
+        });
+
+        document.getElementById('save-score-btn').addEventListener('click', async () => {
+            // Construct name from inputs
+            const nameFromInputs =
+                (document.getElementById('char1').value || '') +
+                (document.getElementById('char2').value || '') +
+                (document.getElementById('char3').value || '');
+
+            if (nameFromInputs.length === 3) {
+                playerName = nameFromInputs.toUpperCase();
+            }
+
+            if (playerName.length < 3) {
+                alert("Digite um nome com pelo menos 3 letras!");
+                return;
+            }
+
+            const newScore = {
+                name: playerName,
+                score: score,
+                date: new Date().toLocaleDateString()
+            };
+
+            // Save to LocalStorage
+            let highScores = JSON.parse(localStorage.getItem('highScores') || '[]');
+            highScores.push(newScore);
+            highScores.sort((a, b) => b.score - a.score);
+            highScores = highScores.slice(0, 10); // Keep top 10
+            localStorage.setItem('highScores', JSON.stringify(highScores));
+
+            alert(`Recorde Salvo Localmente!\nNome: ${playerName}\nScore: ${score}`);
+
+            // Firebase Logic
+            if (!isFirebaseReady) {
+                console.warn("Firebase não está pronto. Score salvo apenas localmente.");
+                return;
+            }
+
+            try {
+                // Add a new document with a generated id.
+                const docRef = await addDoc(collection(db, "scores"), {
+                    name: playerName,
+                    score: score,
+                    date: new Date().toISOString() // Use ISO string for better sorting/format
+                });
+                // console.log("Document written with ID: ", docRef.id);
+                alert(`Recorde Salvo no Firebase!\nID: ${docRef.id}`);
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                alert("Erro ao salvar no Firebase. Verifique o console.");
+            }
+        });
+
+        // --- DYNAMIC ADMIN PANEL ---
+
+        // --- DYNAMIC ADMIN PANEL ---
+
+        // Return to Start Screen
+        document.getElementById('game-over-screen').classList.add('hidden');
+        // Removed old admin-login-btn listener as per instructions.
+        // document.getElementById('admin-login-btn').addEventListener('click', () => {
+        //     // Password check removed as requested
+        //     // const pass = document.getElementById('admin-pass').value;
+        //     // if (pass === "admin123") {
+        //     adminControls.style.display = 'block';
+        //     document.getElementById('admin-login-btn').style.display = 'none';
+        //     // Hide password input too since it's not needed
+        //     document.getElementById('admin-pass').style.display = 'none';
+        //     const passLabel = document.querySelector('label[for="admin-pass"]');
+        //     if (passLabel) passLabel.style.display = 'none';
+
+        //     // Load current values into inputs
+        //     document.getElementById('cfg-gravity').value = gameConfig.gravity;
+        //     document.getElementById('cfg-speed').value = gameConfig.baseSpeed;
+        //     document.getElementById('cfg-diff').value = gameConfig.difficultyMultiplier;
+        //     // } else {
+        //     //     alert("Senha Incorreta!");
+        //     // }
+        // });
+
+        // Sprite Upload Logic
+        // This function is now integrated into renderAdminPanel and its calls are removed.
+        // function handleSpriteUpload(inputId, textureKey) {
+        //     document.getElementById(inputId).addEventListener('change', (e) => {
+        //         const file = e.target.files[0];
+        //         if (!file) return;
+
+        //         const reader = new FileReader();
+        //         reader.onload = (event) => {
+        //             const img = new Image();
+        //             img.src = event.target.result;
+        //             img.onload = () => {
+        //                 if (game) {
+        //                     // Add new texture
+        //                     const customKey = textureKey + '_custom';
+        //                     if (game.textures.exists(customKey)) {
+        //                         game.textures.remove(customKey);
+        //                     }
+        //                     game.textures.addImage(customKey, img);
+        //                     alert(`Sprite ${textureKey} atualizado! Próximas caixas usarão o novo sprite.`);
+        //                 }
+        //             };
+        //         };
+        //         reader.readAsDataURL(file);
+        //     });
+        // }
+
+        // handleSpriteUpload('upload-box', 'box');
+        // handleSpriteUpload('upload-box-heavy', 'box_heavy');
+
+        // Update Save Logic
+        // Update Save Logic
+        // --- GLOBAL SHORTCUTS (Document Level) ---
+        document.addEventListener('keydown', (event) => {
+            const key = event.key;
+            // console.log('Global Keydown:', key);
+
+            const gameOverScreen = document.getElementById('game-over-screen');
+
+            const gameOverVisible = gameOverScreen && !gameOverScreen.classList.contains('hidden');
+
+            if (key === ' ' || key === 'Enter') {
+                if (gameOverVisible) {
+                    // console.log('Global Shortcut: Restart Game');
+                    startGame();
+                    event.preventDefault();
+                }
+            }
+        });
+
+        // Check for Game Over test param
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('gameover') === 'true') {
+            // Wait a brief moment for assets/DOM to be ready
+            setTimeout(() => {
+                gameOver();
+            }, 500);
+        }
+    </script>
+
+    <!-- Game Over Screen - Placed at end for proper z-index stacking -->
+    <div id="game-over-screen" class="hidden"
+        style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; background: rgba(0, 0, 0, 0.7); justify-content: center; align-items: center; z-index: 10000 !important;">
+        <!-- Content Wrapper (Above Falling Boxes) -->
+        <div class="game-over-content">
+            <!-- Group 1: Image -->
+            <div style="display: flex; gap: 20px; align-items: center; justify-content: center; margin-bottom: 48px;">
+                <img src="assets/game_over/game_text.png" alt="GAME"
+                    style="width: 40%; max-width: 200px; image-rendering: pixelated; animation: pulse-grow 2s infinite ease-in-out;">
+                <img src="assets/game_over/over_text.png" alt="OVER"
+                    style="width: 40%; max-width: 200px; image-rendering: pixelated; animation: pulse-shrink 2s infinite ease-in-out;">
+            </div>
+
+            <!-- Group 2: Score -->
+            <div id="final-score"
+                style="font-size: 32px; color: #fff; text-shadow: 4px 4px 0px #000; margin-bottom: 48px;">SCORE: 0</div>
+
+            <!-- Group 3: Nickname & Save -->
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 15px; margin-bottom: 48px;">
+                <div style="color: #fff; font-size: 20px; margin-bottom: 5px; font-family: 'Press Start 2P', cursive;">
+                    APELIDO</div>
+
+                <div class="input-group">
+                    <input type="text" maxlength="1" class="char-input" id="char1">
+                    <input type="text" maxlength="1" class="char-input" id="char2">
+                    <input type="text" maxlength="1" class="char-input" id="char3">
+                    <input type="text" maxlength="1" class="char-input" id="char4">
+                    <input type="text" maxlength="1" class="char-input" id="char5">
+                </div>
+
+                <button class="pixel-btn" id="save-score-btn"
+                    style="width: 100%; font-size: 18px; background: #4CAF50; border: 4px solid #fff; color: #fff; box-shadow: 4px 4px 0px #000;">SALVAR
+                    SCORE</button>
+            </div>
+
+            <!-- Group 4: Restart Button -->
+            <button class="menu-btn" id="restart-btn" style="margin-top: 20px;">TENTAR DE NOVO (R)</button>
+        </div>
+    </div>
+
+    <!-- Debug Button (Visible only during game) -->
+    <button id="debug-btn" class="hidden"
+        style="position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(0,0,0,0.7); border: 2px solid #00ffff; color: #00ffff; padding: 12px 24px; cursor: pointer; border-radius: 5px; font-family: 'Press Start 2P'; font-size: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.5);">
+        ⚙️ CONFIG
+    </button>
+
+    <!-- Debug Sidebar -->
+    <div id="debug-sidebar"
+        style="position: fixed; top: 0; left: -350px; width: 300px; height: 100%; background: rgba(10, 10, 20, 0.95); border-right: 2px solid #00ffff; z-index: 10001; transition: left 0.3s ease; padding: 20px; color: #fff; font-family: 'Press Start 2P'; overflow-y: auto; box-shadow: 5px 0 15px rgba(0,0,0,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="margin: 0; font-size: 16px; color: #00ffff;">CONFIGURAÇÕES</h2>
+            <button id="close-debug-btn"
+                style="background: none; border: none; color: #ff4444; font-size: 20px; cursor: pointer;">X</button>
+        </div>
+
+        <div class="debug-control-group" style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 10px; font-size: 10px; color: #aaa;">GRAVIDADE (Y)</label>
+            <input type="range" id="debug-gravity" min="0" max="5" step="0.1" value="1" style="width: 100%;">
+            <span id="val-gravity"
+                style="display: block; text-align: right; font-size: 10px; margin-top: 5px;">1.0</span>
+        </div>
+
+        <div class="debug-control-group" style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 10px; font-size: 10px; color: #aaa;">VELOCIDADE
+                GUINDASTE</label>
+            <input type="range" id="debug-speed" min="1" max="10" step="0.5" value="2" style="width: 100%;">
+            <span id="val-speed" style="display: block; text-align: right; font-size: 10px; margin-top: 5px;">2.0</span>
+        </div>
+
+        <div class="debug-control-group" style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 10px; font-size: 10px; color: #aaa;">MULTIPLICADOR
+                DIFICULDADE</label>
+            <input type="range" id="debug-difficulty" min="0" max="1" step="0.05" value="0.1" style="width: 100%;">
+            <span id="val-difficulty"
+                style="display: block; text-align: right; font-size: 10px; margin-top: 5px;">0.1</span>
+        </div>
+
+        <div class="debug-control-group" style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 10px; font-size: 10px; color: #aaa;">ATRITO (FRICTION)</label>
+            <input type="range" id="debug-friction" min="0" max="1" step="0.05" value="0.5" style="width: 100%;">
+            <span id="val-friction"
+                style="display: block; text-align: right; font-size: 10px; margin-top: 5px;">0.5</span>
+        </div>
+
+        <div class="debug-control-group" style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 10px; font-size: 10px; color: #aaa;">QUICAR (BOUNCE)</label>
+            <input type="range" id="debug-bounce" min="0" max="1" step="0.05" value="0.1" style="width: 100%;">
+            <span id="val-bounce"
+                style="display: block; text-align: right; font-size: 10px; margin-top: 5px;">0.1</span>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button id="apply-config-btn" class="pixel-btn"
+                style="flex: 1; font-size: 10px; padding: 10px; background-color: #00ffff; color: #000; border-color: #fff;">APLICAR</button>
+            <button id="reset-config-btn" class="pixel-btn"
+                style="flex: 1; font-size: 10px; padding: 10px; background-color: #ff4444; color: #fff; border-color: #fff;">RESET</button>
+        </div>
+
+        <div style="margin-top: 30px; border-top: 1px solid #333; padding-top: 20px;">
+            <p style="font-size: 8px; color: #666; line-height: 1.5;">
+                * Alterações aplicadas em tempo real.<br>
+                * Não salva no banco de dados.<br>
+                * Use para testar estabilidade.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Debug Sidebar Logic
+        const debugBtn = document.getElementById('debug-btn');
+        const debugSidebar = document.getElementById('debug-sidebar');
+        const closeDebugBtn = document.getElementById('close-debug-btn');
+
+        // Inputs
+        const inputGravity = document.getElementById('debug-gravity');
+        const inputSpeed = document.getElementById('debug-speed');
+        const inputDifficulty = document.getElementById('debug-difficulty');
+        const inputFriction = document.getElementById('debug-friction');
+        const inputBounce = document.getElementById('debug-bounce');
+
+        // Value Displays
+        const valGravity = document.getElementById('val-gravity');
+        const valSpeed = document.getElementById('val-speed');
+        const valDifficulty = document.getElementById('val-difficulty');
+        const valFriction = document.getElementById('val-friction');
+        const valBounce = document.getElementById('val-bounce');
+
+        // Toggle Sidebar
+        debugBtn.addEventListener('click', () => {
+            debugSidebar.style.left = '0';
+            // Squeeze Game Content
+            const gameContainer = document.getElementById('game-container');
+            if (gameContainer) {
+                gameContainer.style.transition = 'margin-left 0.3s ease, width 0.3s ease';
+                gameContainer.style.marginLeft = '300px';
+                gameContainer.style.width = 'calc(100% - 300px)';
+
+                // Trigger Phaser Resize after transition
+                setTimeout(() => {
+                    if (game) {
+                        game.scale.resize(gameContainer.clientWidth, gameContainer.clientHeight);
+                    }
+                }, 350);
+            }
+
+            // Sync values with current game state
+            if (typeof gameConfig !== 'undefined') {
+                inputGravity.value = gameConfig.gravity;
+                valGravity.innerText = gameConfig.gravity;
+
+                inputSpeed.value = gameConfig.baseSpeed;
+                valSpeed.innerText = gameConfig.baseSpeed;
+
+                inputDifficulty.value = gameConfig.difficultyMultiplier;
+                valDifficulty.innerText = gameConfig.difficultyMultiplier;
+            }
+        });
+
+        closeDebugBtn.addEventListener('click', () => {
+            debugSidebar.style.left = '-350px';
+            // Reset Game Content Position
+            const gameContainer = document.getElementById('game-container');
+            if (gameContainer) {
+                gameContainer.style.marginLeft = '0';
+                gameContainer.style.width = '100%';
+
+                // Trigger Phaser Resize after transition
+                setTimeout(() => {
+                    if (game) {
+                        game.scale.resize(window.innerWidth, window.innerHeight);
+                    }
+                }, 350);
+            }
+        });
+
+        // Real-time Updates (UI Only)
+        inputGravity.addEventListener('input', (e) => { document.getElementById('val-gravity').innerText = e.target.value; });
+        inputSpeed.addEventListener('input', (e) => { document.getElementById('val-speed').innerText = e.target.value; });
+        inputDifficulty.addEventListener('input', (e) => { document.getElementById('val-difficulty').innerText = e.target.value; });
+        inputFriction.addEventListener('input', (e) => { document.getElementById('val-friction').innerText = e.target.value; });
+        inputBounce.addEventListener('input', (e) => { document.getElementById('val-bounce').innerText = e.target.value; });
+
+        // Apply Config Logic
+        document.getElementById('apply-config-btn').addEventListener('click', () => {
+            // console.log("Applying config...");
+            if (typeof gameConfig !== 'undefined') {
+                gameConfig.gravity = parseFloat(inputGravity.value);
+                gameConfig.baseSpeed = parseFloat(inputSpeed.value);
+                gameConfig.difficultyMultiplier = parseFloat(inputDifficulty.value);
+
+                // Apply to Game
+                if (game) {
+                    // Try to get the running scene
+                    const scene = game.scene.getScene('default') || game.scene.scenes[0];
+
+                    if (scene && scene.matter) {
+                        scene.matter.world.setGravity(0, gameConfig.gravity);
+                        // console.log("Gravity applied:", gameConfig.gravity);
+                    }
+
+                    // Update Crane Speed
+                    if (typeof craneSpeed !== 'undefined') {
+                        craneSpeed = gameConfig.baseSpeed + (score * gameConfig.difficultyMultiplier);
+                    }
+
+                    // Update Box Physics
+                    const friction = parseFloat(inputFriction.value);
+                    const bounce = parseFloat(inputBounce.value);
+                    updateBoxPhysics('friction', friction);
+                    updateBoxPhysics('bounce', bounce);
+
+                    alert("Configurações Aplicadas com Sucesso!");
+                } else {
+                    console.error("Game instance not found!");
+                }
+            }
+        });
+
+        // Reset Config Logic
+        document.getElementById('reset-config-btn').addEventListener('click', () => {
+            // Reset inputs to defaults
+            inputGravity.value = 1; document.getElementById('val-gravity').innerText = "1";
+            inputSpeed.value = 2; document.getElementById('val-speed').innerText = "2";
+            inputDifficulty.value = 0.1; document.getElementById('val-difficulty').innerText = "0.1";
+            inputFriction.value = 0.5; document.getElementById('val-friction').innerText = "0.5";
+            inputBounce.value = 0.1; document.getElementById('val-bounce').innerText = "0.1";
+
+            // Trigger Apply
+            document.getElementById('apply-config-btn').click();
+        });
+
+        // Responsive Resize Listener
+        window.addEventListener('resize', () => {
+            if (game) {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+
+                game.scale.resize(width, height);
+
+                // Update background size if needed
+                if (game.scene.scenes[0] && game.scene.scenes[0].background) {
+                    const bg = game.scene.scenes[0].background;
+                    bg.setSize(width, height);
+                    const bgScale = Math.max(width / 1440, 1);
+                    bg.setTileScale(bgScale, bgScale);
+                }
+            }
+        });
+
+    </script>
+</body>
+
+</html>
