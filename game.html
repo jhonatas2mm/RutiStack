@@ -959,17 +959,23 @@
         let mascotFace;
         let mascotLever;
         let isMascotVisible = true;
-        const MASCOT_SCALE = 0.5;
-        const MASCOT_MARGIN_RIGHT = 32;
-        const MASCOT_MARGIN_BOTTOM = 16;
-        const MASCOT_LEVER_OFFSET_X = 0.72; // relative to body width
-        const MASCOT_LEVER_OFFSET_Y = -8;
+        const MASCOT_SCALE = 0.20; // smaller mascot
+        const MASCOT_MARGIN_RIGHT = 24;
+        const MASCOT_MARGIN_BOTTOM = 12;
+        const MASCOT_LEVER_OFFSET_X = 0.95; // slight move left
+        const MASCOT_LEVER_OFFSET_Y = 20; // lift arm higher
+        const MASCOT_ARM_SCALE = 1.5; // enlarge lever/wing further
 
         // Dynamic Sprite Storage
         let availableSprites = {
             normal: [],
-            goal: []
+            goal: [],
+            goalRect: [],
+            ice: [],
+            iceRect: []
         };
+
+        let lastMouseClickTs = Date.now();
 
         // Box Configuration (Data-Driven)
         // Box Configuration (Data-Driven)
@@ -980,8 +986,8 @@
                 name: 'Normal Quadrada',
                 chance: 45,
                 textures: ['normal_1', 'normal_2', 'normal_3'],
-                width: 430,
-                height: 430,
+                width: 143,
+                height: 143,
                 densityRange: [0.009, 0.011],
                 friction: 0.5,
                 bounce: 0.1,
@@ -992,10 +998,10 @@
                 id: 'normal_rect',
                 category: 'normal',
                 name: 'Normal Retangular',
-                chance: 45,
-                textures: ['normal_1', 'normal_2', 'normal_3'],
-                width: 430,
-                height: 241,
+                chance: 40,
+                textures: ['retangulo_1', 'retangulo_2', 'retangulo_3', 'retangulo_4', 'retangulo_5', 'retangulo_6', 'retangulo_7', 'retangulo_8', 'retangulo_9', 'retangulo_10'],
+                width: 172,
+                height: 98, // will keep proportion 421x241 via ratio below
                 densityRange: [0.009, 0.011],
                 friction: 0.5,
                 bounce: 0.1,
@@ -1006,27 +1012,55 @@
                 id: 'goal_square',
                 category: 'goal',
                 name: 'Meta Quadrada',
-                chance: 5,
+                chance: 10,
                 textures: ['goal_square'],
-                width: 430,
-                height: 430,
-                densityRange: [0.035, 0.045],
-                friction: 0.55,
-                bounce: 0.05,
+                width: 143,
+                height: 143,
+                densityRange: [0.06, 0.08],
+                friction: 0.9,
+                bounce: 0.01,
                 variations: 1,
                 sizeIncrement: 0
             },
             {
                 id: 'goal_rect',
-                category: 'goal',
+                category: 'goalRect',
                 name: 'Meta Retangular',
-                chance: 5,
-                textures: ['goal_rect', 'goal_rect_alt1', 'goal_rect_alt2', 'goal_rect_alt3', 'goal_rect_alt4', 'goal_rect_alt5', 'goal_rect_alt6', 'goal_rect_alt7', 'goal_rect_alt8', 'goal_rect_alt9'],
-                width: 430,
-                height: 241,
-                densityRange: [0.035, 0.045],
-                friction: 0.55,
-                bounce: 0.05,
+                chance: 10,
+                textures: ['goal_rect'],
+                width: 172,
+                height: 98, // proportional to 421x241
+                densityRange: [0.06, 0.08],
+                friction: 0.9,
+                bounce: 0.01,
+                variations: 1,
+                sizeIncrement: 0
+            },
+            {
+                id: 'ice_square',
+                category: 'ice',
+                name: 'Gelo Quadrada',
+                chance: 10,
+                textures: ['ice_1', 'ice_2', 'ice_3'],
+                width: 143,
+                height: 143,
+                densityRange: [0.008, 0.01],
+                friction: 0.08,
+                bounce: 0.02,
+                variations: 1,
+                sizeIncrement: 0
+            },
+            {
+                id: 'ice_rect',
+                category: 'iceRect',
+                name: 'Gelo Retangular',
+                chance: 10,
+                textures: ['ice_rect_1', 'ice_rect_2', 'ice_rect_3'],
+                width: 172,
+                height: 98,
+                densityRange: [0.008, 0.01],
+                friction: 0.06,
+                bounce: 0.02,
                 variations: 1,
                 sizeIncrement: 0
             }
@@ -1100,22 +1134,19 @@
             for (let i = 1; i <= 20; i++) {
                 this.load.image(`normal_${i}`, `assets/sprites/normal/${i}.png`);
             }
-            const goalSprites = [
-                'goal_rect',
-                'goal_square',
-                'goal_rect_alt1',
-                'goal_rect_alt2',
-                'goal_rect_alt3',
-                'goal_rect_alt4',
-                'goal_rect_alt5',
-                'goal_rect_alt6',
-                'goal_rect_alt7',
-                'goal_rect_alt8',
-                'goal_rect_alt9'
-            ];
+            const goalSprites = ['goal_square', 'goal_rect'];
             goalSprites.forEach(key => {
-                this.load.image(key, `assets/sprites/goal/${key}.png`);
+                this.load.image(key, `assets/sprites/heavy/${key}.png`);
             });
+
+            for (let i = 1; i <= 10; i++) {
+                this.load.image(`retangulo_${i}`, `assets/sprites/retangulo/${i}.png`);
+            }
+
+            for (let i = 1; i <= 10; i++) {
+                this.load.image(`ice_${i}`, `assets/sprites/ice/${i}.png`);
+                this.load.image(`ice_rect_${i}`, `assets/sprites/ice_retangulo/${i}.png`);
+            }
 
             // 2. Crane (Simple Gray)
             graphics.clear();
@@ -1174,11 +1205,12 @@
             graphics.destroy();
 
             // --- MASCOT ASSETS (Real Sprites) ---
-            this.load.image('mascot_normal', 'assets/mascot/coruja face 1.png');
-            this.load.image('mascot_worried', 'assets/mascot/coruja face 2.png');
-            this.load.image('mascot_sad', 'assets/mascot/coruja face 3.png');
-            this.load.image('lever_rest', 'assets/mascot/mascot_face_2.png');
-            this.load.image('lever_pull', 'assets/mascot/mascot_face_3.png');
+            this.load.image('mascot_normal', 'assets/mascot/normal.png');
+            this.load.image('mascot_worried', 'assets/mascot/woried_1.png');
+            this.load.image('mascot_worried2', 'assets/mascot/woried_2.png');
+            this.load.image('mascot_sad', 'assets/mascot/sad.png');
+            this.load.image('lever_rest', 'assets/mascot/alavanca normal.png');
+            this.load.image('lever_pull', 'assets/mascot/alavanca puxada.png');
             // Load custom uploaded sprites from localStorage
             // Load custom uploaded sprites from localStorage using Phaser Loader
             // DISABLED TEMPORARILY TO FIX CORS/GAME BUGS
@@ -1207,12 +1239,30 @@
                     availableSprites.normal.push(`normal_${i}`);
                 }
             }
-            const goalTextureKeys = ['goal_rect', 'goal_square', 'goal_rect_alt1', 'goal_rect_alt2', 'goal_rect_alt3', 'goal_rect_alt4', 'goal_rect_alt5', 'goal_rect_alt6', 'goal_rect_alt7', 'goal_rect_alt8', 'goal_rect_alt9'];
+            const goalTextureKeys = ['goal_square', 'goal_rect'];
             goalTextureKeys.forEach(key => {
                 if (this.textures.exists(key)) {
                     availableSprites.goal.push(key);
                 }
             });
+
+            availableSprites.goalRect = [];
+            if (this.textures.exists('goal_rect')) {
+                availableSprites.goalRect.push('goal_rect');
+            }
+
+            availableSprites.ice = [];
+            availableSprites.iceRect = [];
+            for (let i = 1; i <= 10; i++) {
+                const iceKey = `ice_${i}`;
+                if (this.textures.exists(iceKey)) {
+                    availableSprites.ice.push(iceKey);
+                }
+                const iceRectKey = `ice_rect_${i}`;
+                if (this.textures.exists(iceRectKey)) {
+                    availableSprites.iceRect.push(iceRectKey);
+                }
+            }
             console.log("Available Sprites Detected:", availableSprites);
 
             // Fallback if no sprites loaded (prevent crash)
@@ -1227,9 +1277,23 @@
             if (availableSprites.goal.length === 0) {
                 const graphics = this.make.graphics({ x: 0, y: 0, add: false });
                 graphics.fillStyle(0xCCCCCC);
-                graphics.fillRect(0, 0, 430, 241);
-                graphics.generateTexture('goal_fallback', 430, 241);
+                graphics.fillRect(0, 0, 143, 82);
+                graphics.generateTexture('goal_fallback', 143, 82);
                 availableSprites.goal.push('goal_fallback');
+            }
+            if (availableSprites.ice.length === 0) {
+                const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+                graphics.fillStyle(0x99d9ff);
+                graphics.fillRect(0, 0, 128, 128);
+                graphics.generateTexture('ice_fallback', 128, 128);
+                availableSprites.ice.push('ice_fallback');
+            }
+            if (availableSprites.iceRect.length === 0) {
+                const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+                graphics.fillStyle(0x99d9ff);
+                graphics.fillRect(0, 0, 172, 98);
+                graphics.generateTexture('ice_rect_fallback', 172, 98);
+                availableSprites.iceRect.push('ice_rect_fallback');
             }
 
             // Matter.js World Bounds - Completely disabled to allow boxes to fall off screen
@@ -1260,7 +1324,7 @@
             crane.setVisible(false); // Hide the crane pole, keep only rope
 
             ropeGraphics = this.add.graphics();
-            ropeGraphics.setDepth(9);
+            ropeGraphics.setDepth(-1);
 
             // Mark scene as ready
             isSceneReady = true;
@@ -1269,11 +1333,12 @@
 
             // Update Restart Button Text
             const restartBtn = document.getElementById('restart-btn');
-            if (restartBtn) restartBtn.innerHTML = 'TENTAR DE NOVO <span class="shortcut-key">[R]</span>';
+            if (restartBtn) restartBtn.innerHTML = 'TENTAR DE NOVO <span class="shortcut-key">[ENTER]</span>';
 
             // Input
             this.input.on('pointerdown', () => {
                 // console.log('Click detected. isGameActive:', isGameActive, 'currentBox:', !!currentBox, 'fallingBox:', !!fallingBox);
+                lastMouseClickTs = Date.now();
 
                 // Hide instruction on first interaction
                 if (!instructionHidden) {
@@ -1321,7 +1386,7 @@
                 }
             });
 
-            this.input.keyboard.on('keydown-R', () => {
+            this.input.keyboard.on('keydown-ENTER', () => {
                 const gameOverScreen = document.getElementById('game-over-screen');
                 const gameOverVisible = gameOverScreen && !gameOverScreen.classList.contains('hidden');
                 if (!isGameActive && gameOverVisible) {
@@ -1350,7 +1415,7 @@
                     [bodyA, bodyB].forEach(body => {
                         if (body.gameObject && boxes.includes(body.gameObject) && !body.isStatic) {
                             // Heavy/Goal Box Impact Animation
-                            if (body.gameObject.boxCategory === 'goal' && !body.gameObject.hasImpacted) {
+                            if ((body.gameObject.boxCategory === 'goal' || body.gameObject.boxCategory === 'goalRect') && !body.gameObject.hasImpacted) {
                                 body.gameObject.hasImpacted = true;
                                 // Shake camera: duration 200ms, intensity 0.005
                                 this.cameras.main.shake(200, 0.005);
@@ -1564,7 +1629,20 @@
             // Select Texture - Map new types to existing sprite categories
             const spriteCategory = selectedType.category || 'normal';
             const typeTextures = (selectedType.textures || []).filter(key => scene.textures.exists(key));
-            const spriteList = (typeTextures.length > 0 ? typeTextures : (availableSprites[spriteCategory] || availableSprites.normal));
+            let spriteList = typeTextures;
+            if (spriteList.length === 0) {
+                if (spriteCategory === 'goal') {
+                    spriteList = availableSprites.goal;
+                } else if (spriteCategory === 'goalRect') {
+                    spriteList = availableSprites.goalRect;
+                } else if (spriteCategory === 'ice') {
+                    spriteList = availableSprites.ice;
+                } else if (spriteCategory === 'iceRect') {
+                    spriteList = availableSprites.iceRect;
+                } else {
+                    spriteList = availableSprites.normal;
+                }
+            }
 
             if (!spriteList || spriteList.length === 0) {
                 console.error('No sprites available for type:', selectedType.id);
@@ -1576,6 +1654,7 @@
 
             // Spawn at crane position
             const box = scene.matter.add.image(width / 2, crane.y + 250, textureKey);
+            box.setDepth(5); // keep rope behind box
 
             // Apply Physics Properties
             // Apply Physics Properties
@@ -1587,7 +1666,12 @@
             const sizeOffset = randomVariation * increment;
 
             const finalWidth = selectedType.width + sizeOffset;
-            const finalHeight = selectedType.height + sizeOffset;
+            let finalHeight = selectedType.height + sizeOffset;
+            // Keep rect proportion close to 421x241 when flagged by height preset 82
+            if (selectedType.id.includes('rect')) {
+                const ratio = 241 / 421;
+                finalHeight = Math.round(finalWidth * ratio);
+            }
 
             box.setDisplaySize(finalWidth, finalHeight);
             // Physics Fix: Slightly smaller body to prevent edge snagging/floating
@@ -1605,6 +1689,18 @@
             box.setDensity(density);
             box.setFriction(selectedType.friction);
             box.setBounce(selectedType.bounce);
+            // Ajustes de fricção por categoria
+            if (spriteCategory === 'goal' || spriteCategory === 'goalRect') {
+                box.setFriction(Math.max(selectedType.friction, 0.95));
+                box.setFrictionStatic(1.4);
+                box.setFrictionAir(0.0005);
+                box.setBounce(0);
+            } else if (spriteCategory === 'ice' || spriteCategory === 'iceRect') {
+                // gelo desliza mais: fricção baixa, mas aumenta conforme inclinação (implícito na física)
+                box.setFriction(selectedType.friction);
+                box.setFrictionStatic(0.1);
+                box.setFrictionAir(0.0002);
+            }
 
             box.boxTypeId = selectedType.id; // Store type ID for reference
             box.boxCategory = spriteCategory;
@@ -1651,7 +1747,7 @@
             const y = height - MASCOT_MARGIN_BOTTOM;
             mascotBody.setOrigin(1, 1).setScale(MASCOT_SCALE).setPosition(x, y);
             if (mascotLever) {
-                mascotLever.setOrigin(1, 1).setScale(MASCOT_SCALE);
+                mascotLever.setOrigin(1, 1).setScale(MASCOT_SCALE * MASCOT_ARM_SCALE);
                 const leverX = x - (mascotBody.displayWidth * MASCOT_LEVER_OFFSET_X);
                 mascotLever.setPosition(leverX, y + MASCOT_LEVER_OFFSET_Y);
             }
@@ -1692,16 +1788,15 @@
                 faceSprite.setTexture('mascot_normal'); // normal
                 return;
             }
-            const topBox = boxes[boxes.length - 1];
+            // Usar a pilha (caixas já paradas) como referência
+            const staticBoxes = boxes.filter(b => b.body && b.body.isStatic);
+            const refBox = staticBoxes.length > 0
+                ? staticBoxes.reduce((top, b) => (b.y < top.y ? b : top)) // caixa mais alta (menor y)
+                : boxes[boxes.length - 1];
             const centerX = scene.scale.width / 2;
-            const deviation = Math.abs(topBox.x - centerX);
-            if (deviation < 30) {
-                faceSprite.setTexture('mascot_normal'); // normal
-            } else if (deviation < 60) {
-                faceSprite.setTexture('mascot_worried'); // worried
-            } else {
-                faceSprite.setTexture('mascot_worried'); // usar a mesma face "worried" para alta instabilidade (ou criar outra se houver)
-            }
+            const deviation = Math.abs(refBox.x - centerX);
+            const isStable = deviation < 25;
+            faceSprite.setTexture(isStable ? 'mascot_normal' : 'mascot_worried');
         }
 
         function triggerLever(scene) {
@@ -1801,19 +1896,19 @@
                 const box = document.createElement('img');
                 box.className = 'rain-box';
 
-                // Randomly select a sprite from availableSprites
-                let spriteSrc = 'assets/sprites/normal/1.png';
-                const allSprites = [...availableSprites.normal, ...availableSprites.goal];
+            // Randomly select a sprite from availableSprites (squares only)
+            let spriteSrc = 'assets/sprites/normal/1.png';
+            const squareSprites = [...availableSprites.normal, ...availableSprites.goal]; // goal only has squares now
 
-                if (allSprites.length > 0) {
-                    const randomKey = Phaser.Utils.Array.GetRandom(allSprites);
-                    if (randomKey.startsWith('normal_')) {
-                        const num = randomKey.split('_')[1];
-                        spriteSrc = `assets/sprites/normal/${num}.png`;
-                    } else if (randomKey.startsWith('goal')) {
-                        spriteSrc = `assets/sprites/goal/${randomKey}.png`;
-                    }
+            if (squareSprites.length > 0) {
+                const randomKey = Phaser.Utils.Array.GetRandom(squareSprites);
+                if (randomKey.startsWith('normal_')) {
+                    const num = randomKey.split('_')[1];
+                    spriteSrc = `assets/sprites/normal/${num}.png`;
+                } else if (randomKey === 'goal_square') {
+                    spriteSrc = `assets/sprites/goal/${randomKey}.png`;
                 }
+            }
 
                 box.src = spriteSrc;
 
@@ -1975,14 +2070,7 @@
                 gameOverMenuIndex = (gameOverMenuIndex + 1) % 2;
                 updateGameOverMenu();
             } else if (e.key === 'Enter') {
-                // Trigger selected button
-                if (gameOverMenuIndex === 0) {
-                    document.getElementById('save-score-btn').click();
-                } else {
-                    document.getElementById('restart-btn').click();
-                }
-            } else if (e.key.toLowerCase() === 'r') {
-                // Shortcut: R to Restart immediately
+                // Shortcut: Enter to Restart immediately
                 document.getElementById('restart-btn').click();
             }
         });
@@ -2104,6 +2192,7 @@
                         gravity: gameConfig.gravity,
                         playDuration: Math.floor((Date.now() - gameStartTime) / 1000), // seconds
                         boxTypes: boxes.map(box => box.boxType || 'normal'),
+                        secondsSinceLastClick: Math.floor((Date.now() - lastMouseClickTs) / 1000),
                         userAgent: navigator.userAgent,
                         screenResolution: `${window.innerWidth}x${window.innerHeight}`,
                         timestamp: new Date().toISOString()
@@ -2113,7 +2202,7 @@
                     await addDoc(collection(db, "scores"), {
                         playerName: playerName,
                         score: score,
-                        timestamp: new Date().toISOString(),
+                        timestamp: new Date(), // Firestore will store as timestamp
                         gameLog: gameLog // Anti-hack data
                     });
 
@@ -2121,12 +2210,30 @@
                     await new Promise(resolve => setTimeout(resolve, 500));
                 } catch (e) {
                     console.error("Error adding document: ", e);
-                    // Silent fail on firebase error, but still redirect since local save worked
+                    saveBtn.innerText = "ERRO AO SALVAR";
+                    setTimeout(() => {
+                        saveBtn.innerHTML = originalText;
+                        saveBtn.disabled = false;
+                        saveBtn.style.opacity = "1";
+                        saveBtn.style.cursor = "pointer";
+                    }, 1200);
+                    return;
                 }
             }
 
-            // Redirect to Ranking
-            window.location.href = 'ranking.html';
+            // Success feedback and clear inputs
+            saveBtn.innerText = "SALVO!";
+            // Clear nickname inputs
+            for (let i = 1; i <= 8; i++) {
+                const input = document.getElementById(`char${i}`);
+                if (input) input.value = '';
+            }
+            setTimeout(() => {
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+                saveBtn.style.opacity = "1";
+                saveBtn.style.cursor = "pointer";
+            }, 1000);
         });
 
         // --- DYNAMIC ADMIN PANEL ---
@@ -2262,8 +2369,7 @@
 
                 <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
                     <button class="pixel-btn" id="save-score-btn"
-                        style="width: 100%; font-size: 16px; background: linear-gradient(180deg, #0099ff, #0066cc); border: 4px solid #003366; color: #fff; box-shadow: 4px 4px 0px #000;">SALVAR
-                        <span class="shortcut-key">[ENTER]</span></button>
+                        style="width: 100%; font-size: 16px; background: linear-gradient(180deg, #0099ff, #0066cc); border: 4px solid #003366; color: #fff; box-shadow: 4px 4px 0px #000;">SALVAR</button>
                     <button class="pixel-btn" id="ranking-btn"
                         style="width: 100%; font-size: 16px; background: transparent; border: 4px solid #fff; color: #fff; box-shadow: 4px 4px 0px #000; padding: 15px;">RANKING</button>
                 </div>
@@ -2273,7 +2379,7 @@
             <div style="display: flex; flex-direction: column; gap: 15px; width: 100%;">
                 <button class="pixel-btn" id="restart-btn"
                     style="width: 100%; font-size: 16px; background: transparent; border: 4px solid #fff; color: #fff; box-shadow: 4px 4px 0px #000;">TENTAR
-                    DE NOVO <span class="shortcut-key">[R]</span></button>
+                    DE NOVO</button>
                 <button class="pixel-btn" onclick="window.location.href='index.html'"
                     style="width: 100%; font-size: 16px; background: transparent; border: 4px solid #fff; color: #fff; box-shadow: 4px 4px 0px #000;">SAIR
                     <span class="shortcut-key">[ESC]</span></button>
@@ -2284,7 +2390,7 @@
     <!-- Debug Button (Visible only during game) -->
     <button id="debug-btn" class="hidden"
         style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(0,0,0,0.7); border: 2px solid #00ffff; color: #00ffff; padding: 10px 15px; cursor: pointer; border-radius: 5px; font-family: 'Press Start 2P'; font-size: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.5);">
-        ⚙️ CONFIG
+        CONFIG
     </button>
 
     <!-- Debug Sidebar -->
@@ -2332,6 +2438,34 @@
                 style="display: block; text-align: right; font-size: 10px; margin-top: 5px;">0.1</span>
         </div>
 
+        <div class="debug-control-group" style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 10px; font-size: 10px; color: #aaa;">CHANCE CAIXA META (%)</label>
+            <input type="range" id="debug-goal-chance" min="0" max="30" step="1" value="10" style="width: 100%;">
+            <span id="val-goal-chance"
+                style="display: block; text-align: right; font-size: 10px; margin-top: 5px;">10</span>
+        </div>
+
+        <div class="debug-control-group" style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 10px; font-size: 10px; color: #aaa;">DENSIDADE CAIXA META</label>
+            <input type="range" id="debug-goal-density" min="0.02" max="0.12" step="0.005" value="0.07" style="width: 100%;">
+            <span id="val-goal-density"
+                style="display: block; text-align: right; font-size: 10px; margin-top: 5px;">0.07</span>
+        </div>
+
+        <div class="debug-control-group" style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 10px; font-size: 10px; color: #aaa;">CHANCE CAIXA GELO (%)</label>
+            <input type="range" id="debug-ice-chance" min="0" max="30" step="1" value="10" style="width: 100%;">
+            <span id="val-ice-chance"
+                style="display: block; text-align: right; font-size: 10px; margin-top: 5px;">10</span>
+        </div>
+
+        <div class="debug-control-group" style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 10px; font-size: 10px; color: #aaa;">FRIÇÃO CAIXA GELO</label>
+            <input type="range" id="debug-ice-friction" min="0" max="0.2" step="0.005" value="0.08" style="width: 100%;">
+            <span id="val-ice-friction"
+                style="display: block; text-align: right; font-size: 10px; margin-top: 5px;">0.08</span>
+        </div>
+
         <div style="display: flex; gap: 10px; margin-top: 20px;">
             <button id="apply-config-btn" class="pixel-btn"
                 style="flex: 1; font-size: 10px; padding: 10px; background-color: #00ffff; color: #000; border-color: #fff;">APLICAR</button>
@@ -2360,6 +2494,10 @@
         const inputDifficulty = document.getElementById('debug-difficulty');
         const inputFriction = document.getElementById('debug-friction');
         const inputBounce = document.getElementById('debug-bounce');
+        const inputGoalChance = document.getElementById('debug-goal-chance');
+        const inputGoalDensity = document.getElementById('debug-goal-density');
+        const inputIceChance = document.getElementById('debug-ice-chance');
+        const inputIceFriction = document.getElementById('debug-ice-friction');
 
         // Value Displays
         const valGravity = document.getElementById('val-gravity');
@@ -2367,6 +2505,10 @@
         const valDifficulty = document.getElementById('val-difficulty');
         const valFriction = document.getElementById('val-friction');
         const valBounce = document.getElementById('val-bounce');
+        const valGoalChance = document.getElementById('val-goal-chance');
+        const valGoalDensity = document.getElementById('val-goal-density');
+        const valIceChance = document.getElementById('val-ice-chance');
+        const valIceFriction = document.getElementById('val-ice-friction');
 
         // Toggle Sidebar
         debugBtn.addEventListener('click', () => {
@@ -2396,6 +2538,23 @@
 
                 inputDifficulty.value = gameConfig.difficultyMultiplier;
                 valDifficulty.innerText = gameConfig.difficultyMultiplier;
+
+                const goalType = boxTypes.find(t => t.category === 'goal');
+                if (goalType) {
+                    inputGoalChance.value = goalType.chance;
+                    valGoalChance.innerText = goalType.chance;
+                    const baseDensity = goalType.densityRange ? (goalType.densityRange[0] + goalType.densityRange[1]) / 2 : goalType.density || 0.07;
+                    inputGoalDensity.value = baseDensity;
+                    valGoalDensity.innerText = baseDensity.toFixed(3);
+                }
+
+                const iceType = boxTypes.find(t => t.category === 'ice');
+                if (iceType) {
+                    inputIceChance.value = iceType.chance;
+                    valIceChance.innerText = iceType.chance;
+                    inputIceFriction.value = iceType.friction;
+                    valIceFriction.innerText = iceType.friction.toFixed(3);
+                }
             }
         });
 
@@ -2422,6 +2581,10 @@
         inputDifficulty.addEventListener('input', (e) => { document.getElementById('val-difficulty').innerText = e.target.value; });
         inputFriction.addEventListener('input', (e) => { document.getElementById('val-friction').innerText = e.target.value; });
         inputBounce.addEventListener('input', (e) => { document.getElementById('val-bounce').innerText = e.target.value; });
+        inputGoalChance.addEventListener('input', (e) => { document.getElementById('val-goal-chance').innerText = e.target.value; });
+        inputGoalDensity.addEventListener('input', (e) => { document.getElementById('val-goal-density').innerText = parseFloat(e.target.value).toFixed(3); });
+        inputIceChance.addEventListener('input', (e) => { document.getElementById('val-ice-chance').innerText = e.target.value; });
+        inputIceFriction.addEventListener('input', (e) => { document.getElementById('val-ice-friction').innerText = parseFloat(e.target.value).toFixed(3); });
 
         // Apply Config Logic
         document.getElementById('apply-config-btn').addEventListener('click', () => {
@@ -2430,6 +2593,10 @@
                 gameConfig.gravity = parseFloat(inputGravity.value);
                 gameConfig.baseSpeed = parseFloat(inputSpeed.value);
                 gameConfig.difficultyMultiplier = parseFloat(inputDifficulty.value);
+                const goalChance = parseFloat(inputGoalChance.value);
+                const goalDensity = parseFloat(inputGoalDensity.value);
+                const iceChance = parseFloat(inputIceChance.value);
+                const iceFriction = parseFloat(inputIceFriction.value);
 
                 // Apply to Game
                 if (game) {
@@ -2451,6 +2618,22 @@
                     const bounce = parseFloat(inputBounce.value);
                     updateBoxPhysics('friction', friction);
                     updateBoxPhysics('bounce', bounce);
+
+                    // Update goal boxes chance and density
+                    boxTypes = boxTypes.map(t => {
+                        if (t.category === 'goal') {
+                            return {
+                                ...t,
+                                chance: goalChance,
+                                densityRange: [goalDensity * 0.9, goalDensity * 1.1]
+                            };
+                        } else if (t.category === 'ice') {
+                            return { ...t, chance: iceChance, friction: iceFriction };
+                        } else if (t.category === 'iceRect') {
+                            return { ...t, chance: iceChance, friction: iceFriction * 0.8 };
+                        }
+                        return t;
+                    });
 
                     alert("Configurações Aplicadas com Sucesso!");
                 } else {

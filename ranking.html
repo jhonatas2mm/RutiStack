@@ -53,7 +53,6 @@
             border: 4px solid #00ffff;
             border-radius: 10px;
             padding: 20px;
-            box-shadow: 0 8px 32px rgba(0, 255, 255, 0.3);
         }
 
         .ranking-header {
@@ -79,28 +78,10 @@
             transition: all 0.3s;
         }
 
-        .ranking-item:hover {
-            background: rgba(0, 255, 255, 0.1);
-            border-color: #00ffff;
-            transform: translateX(5px);
-        }
-
         .rank {
             font-size: 20px;
-            color: #ffd700;
+            color: #00ffff;
             text-align: center;
-        }
-
-        .rank.gold {
-            color: #ffd700;
-        }
-
-        .rank.silver {
-            color: #c0c0c0;
-        }
-
-        .rank.bronze {
-            color: #cd7f32;
         }
 
         .player-name {
@@ -214,6 +195,7 @@
         // Firebase imports
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
         import { getFirestore, collection, query, orderBy, limit, getDocs } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js';
+        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js';
 
         // Firebase config
         const firebaseConfig = {
@@ -229,6 +211,19 @@
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+        signInAnonymously(auth).catch((err) => console.warn('Anon auth failed:', err));
+
+        function parseTimestamp(value) {
+            if (!value) return null;
+            if (value.toDate) return value.toDate();
+            if (value.seconds) return new Date(value.seconds * 1000);
+            if (typeof value === 'string' || typeof value === 'number') {
+                const d = new Date(value);
+                return isNaN(d.getTime()) ? null : d;
+            }
+            return null;
+        }
 
         // Load ranking
         async function loadRanking() {
@@ -267,10 +262,10 @@
 
                     // Handle legacy fields
                     const pName = data.playerName || data.name || 'ANÔNIMO';
-                    const pDate = data.timestamp || data.date;
+                    const parsedDate = parseTimestamp(data.timestamp || data.date);
 
                     // Format date
-                    const date = pDate ? new Date(pDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A';
+                    const date = parsedDate ? parsedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A';
 
                     item.innerHTML = `
                         <div class="rank ${rankClass}">${rankIcon}</div>
