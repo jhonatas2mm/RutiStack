@@ -69,11 +69,29 @@
             pointer-events: auto;
         }
 
-        #score-display {
+        #lives-display {
             position: fixed;
             top: 20px;
-            right: 20px;
-            /* Moved to right */
+            left: 20px;
+            /* Moved to left */
+            display: flex;
+            gap: 5px;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .heart-icon {
+            width: 24px;
+            height: 24px;
+            image-rendering: pixelated;
+        }
+
+        #score-display {
+            position: fixed;
+            top: 70px;
+            /* Increased spacing (was 50px) */
+            left: 20px;
+            /* Moved to left */
             color: #fff;
             font-family: 'Press Start 2P', cursive;
             font-size: 20px;
@@ -766,12 +784,16 @@
     <!-- Game Container -->
     <div id="game-container"></div>
 
-    <!-- UI Elements -->
-    <!-- Score Display (Top Left) -->
-    <div id="scoreText"
-        style="position: fixed; top: 20px; left: 20px; z-index: 999; color: #fff; font-family: 'Press Start 2P'; font-size: 18px; text-shadow: 4px 4px 0px #000, 0 0 10px rgba(0,255,255,0.5); pointer-events: none;">
-        SCORE: 0
+    <!-- Damage Overlay (Red Flash) -->
+    <div id="damage-overlay"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: red; opacity: 0; pointer-events: none; z-index: 900; transition: opacity 0.1s;">
     </div>
+
+    <!-- UI Elements -->
+    <div id="lives-display"></div>
+    <div id="score-display">SCORE: 0</div>
+
+    <!-- Start Screen -->
 
     <!-- Exit Button (Top Right - Secondary Style) -->
     <button id="exit-btn"
@@ -887,37 +909,7 @@
             }
         }
 
-        // Load Custom Sprites from Firestore
-        async function loadCustomSprites() {
-            if (!isFirebaseReady) {
-                console.log("Firebase offline - using cached sprites from localStorage");
-                return;
-            }
 
-            try {
-                // Load sprites for each box type
-                for (const boxType of ['normal', 'goal']) {
-                    const spritesRef = doc(db, "sprites", boxType);
-                    const spritesSnap = await getDoc(spritesRef);
-
-                    if (spritesSnap.exists()) {
-                        const data = spritesSnap.data();
-                        // Support both new (urls) and old (sprites) format
-                        const spriteUrls = data.urls || data.sprites || [];
-
-                        if (spriteUrls.length > 0) {
-                            // Cache in localStorage
-                            localStorage.setItem(`sprites_${boxType}`, JSON.stringify(spriteUrls));
-                            console.log(`Loaded ${spriteUrls.length} sprite URLs from Firestore for ${boxType}`);
-                        }
-                    } else {
-                        console.log(`No remote sprites found for ${boxType}`);
-                    }
-                }
-            } catch (e) {
-                console.error("Error loading sprites from Firestore:", e);
-            }
-        }
 
         // --- PHASER GAME ---
         const config = {
@@ -947,6 +939,10 @@
         let boxes = [];
         let isGameActive = false;
         let score = 0;
+        let lives = 3; // New Lives System
+        let recordLine; // Graphics for record line
+        let sessionBestY = sessionStorage.getItem('sessionBestY') ? parseFloat(sessionStorage.getItem('sessionBestY')) : null; // Stored best from previous games
+        let currentGameMinY = null; // Track best height of CURRENT game
         let craneSpeed = 2;
         const CRANE_Y = -50; // Absolute top (visual offset handled in update)
         let playerName = 'JOG'; // Default player name
@@ -961,10 +957,10 @@
         let isMascotVisible = true;
         const MASCOT_SCALE = 0.20; // smaller mascot
         const MASCOT_MARGIN_RIGHT = 24;
-        const MASCOT_MARGIN_BOTTOM = 12;
+        const MASCOT_MARGIN_BOTTOM = -20; // Lowered mascot position (was 12)
         const MASCOT_LEVER_OFFSET_X = 0.95; // slight move left
         const MASCOT_LEVER_OFFSET_Y = 20; // lift arm higher
-        const MASCOT_ARM_SCALE = 1.5; // enlarge lever/wing further
+        const MASCOT_ARM_SCALE = 1.95; // enlarge lever/wing further (increased by 30%)
 
         // Dynamic Sprite Storage
         let availableSprites = {
@@ -979,6 +975,7 @@
 
         // Box Configuration (Data-Driven)
         // Box Configuration (Data-Driven)
+        // Box Configuration (Data-Driven)
         let defaultBoxTypes = [
             {
                 id: 'normal_square',
@@ -989,7 +986,7 @@
                 width: 143,
                 height: 143,
                 densityRange: [0.009, 0.011],
-                friction: 0.5,
+                friction: 0.3, // Reduced friction for normal boxes (was 0.5)
                 bounce: 0.1,
                 variations: 1,
                 sizeIncrement: 0
@@ -1003,7 +1000,7 @@
                 width: 172,
                 height: 98, // will keep proportion 421x241 via ratio below
                 densityRange: [0.009, 0.011],
-                friction: 0.5,
+                friction: 0.3, // Reduced friction for normal boxes (was 0.5)
                 bounce: 0.1,
                 variations: 1,
                 sizeIncrement: 0
@@ -1012,7 +1009,7 @@
                 id: 'goal_square',
                 category: 'goal',
                 name: 'Meta Quadrada',
-                chance: 10,
+                chance: 5, // Equalized with Ice (was 10)
                 textures: ['goal_square'],
                 width: 143,
                 height: 143,
@@ -1026,7 +1023,7 @@
                 id: 'goal_rect',
                 category: 'goalRect',
                 name: 'Meta Retangular',
-                chance: 10,
+                chance: 5, // Equalized with Ice (was 10)
                 textures: ['goal_rect'],
                 width: 172,
                 height: 98, // proportional to 421x241
@@ -1040,11 +1037,11 @@
                 id: 'ice_square',
                 category: 'ice',
                 name: 'Gelo Quadrada',
-                chance: 10,
+                chance: 3, // Reduced chance (was 5)
                 textures: ['ice_1', 'ice_2', 'ice_3'],
                 width: 143,
                 height: 143,
-                densityRange: [0.008, 0.01],
+                densityRange: [0.08, 0.1], // Significantly increased density (was 0.04-0.05)
                 friction: 0.08,
                 bounce: 0.02,
                 variations: 1,
@@ -1054,22 +1051,21 @@
                 id: 'ice_rect',
                 category: 'iceRect',
                 name: 'Gelo Retangular',
-                chance: 10,
+                chance: 3, // Reduced chance (was 5)
                 textures: ['ice_rect_1', 'ice_rect_2', 'ice_rect_3'],
                 width: 172,
                 height: 98,
-                densityRange: [0.008, 0.01],
-                friction: 0.06,
+                densityRange: [0.08, 0.1], // Significantly increased density (was 0.04-0.05)
+                friction: 0.08,
                 bounce: 0.02,
                 variations: 1,
                 sizeIncrement: 0
-            }
+            },
         ];
 
         // Load box config from local storage or use default
-        // FORCE RESET TO DEFAULTS TO FIX TEXTURE BUGS
-        let boxTypes = JSON.parse(JSON.stringify(defaultBoxTypes));
         // let boxTypes = JSON.parse(localStorage.getItem('boxTypes')) || JSON.parse(JSON.stringify(defaultBoxTypes));
+        let boxTypes = JSON.parse(JSON.stringify(defaultBoxTypes));
 
         // DATA MIGRATION: Ensure 'textures' array exists for old saves
         boxTypes.forEach(type => {
@@ -1100,7 +1096,7 @@
         }
 
         function updateScoreUI() {
-            const scoreText = document.getElementById('scoreText');
+            const scoreText = document.getElementById('score-display');
             if (scoreText) {
                 scoreText.innerText = `SCORE: ${score}`;
 
@@ -1199,6 +1195,29 @@
             graphics.fillEllipse(20, 12, 20, 12);
             graphics.generateTexture('wing', 40, 25);
 
+            // 7. Heart (Lives) - Pixel Art Style
+            graphics.clear();
+            graphics.fillStyle(0xff0000);
+            // Simple pixel heart 32x32
+            // Top bumps
+            graphics.fillRect(4, 4, 10, 8);
+            graphics.fillRect(18, 4, 10, 8);
+            // Middle
+            graphics.fillRect(2, 12, 28, 8);
+            // Bottom taper
+            graphics.fillRect(6, 20, 20, 6);
+            graphics.fillRect(10, 26, 12, 4);
+            graphics.fillRect(14, 30, 4, 2);
+
+            graphics.generateTexture('heart', 32, 32);
+
+            // 8. Spark (Perfect Drop)
+            graphics.clear();
+            graphics.fillStyle(0xffff00);
+            graphics.fillCircle(4, 4, 4);
+            graphics.generateTexture('spark', 8, 8);
+
+            // Background Texture (Digital Circuit)
             // Background Texture (Digital Circuit)
             this.load.image('bg_digital', 'assets/bg_digital.png');
 
@@ -1232,6 +1251,7 @@
             // DETECT AVAILABLE SPRITES
             // Check which textures actually loaded successfully
             availableSprites.normal = [];
+            availableSprites.normalRect = []; // Added normalRect
             availableSprites.goal = [];
 
             for (let i = 1; i <= 20; i++) {
@@ -1239,6 +1259,12 @@
                     availableSprites.normal.push(`normal_${i}`);
                 }
             }
+            for (let i = 1; i <= 10; i++) {
+                if (this.textures.exists(`retangulo_${i}`)) {
+                    availableSprites.normalRect.push(`retangulo_${i}`);
+                }
+            }
+
             const goalTextureKeys = ['goal_square', 'goal_rect'];
             goalTextureKeys.forEach(key => {
                 if (this.textures.exists(key)) {
@@ -1274,6 +1300,13 @@
                 graphics.generateTexture('normal_fallback', 128, 128);
                 availableSprites.normal.push('normal_fallback');
             }
+            if (availableSprites.normalRect.length === 0) {
+                const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+                graphics.fillStyle(0xFFFFFF);
+                graphics.fillRect(0, 0, 172, 98);
+                graphics.generateTexture('normal_rect_fallback', 172, 98);
+                availableSprites.normalRect.push('normal_rect_fallback');
+            }
             if (availableSprites.goal.length === 0) {
                 const graphics = this.make.graphics({ x: 0, y: 0, add: false });
                 graphics.fillStyle(0xCCCCCC);
@@ -1294,6 +1327,59 @@
                 graphics.fillRect(0, 0, 172, 98);
                 graphics.generateTexture('ice_rect_fallback', 172, 98);
                 availableSprites.iceRect.push('ice_rect_fallback');
+            }
+
+            // ... (rest of create) ...
+            // ... (skip to spawnBox) ...
+            // Select Texture - Map new types to existing sprite categories
+
+            // ... (skip to createPerfectDropEffect) ...
+            function createPerfectDropEffect(scene, x, y, boxWidth = 100) {
+                // "Fusion Seal" Animation - REFINED
+                // Occurs 200ms after landing
+
+                // 1. "PERFECT!" Text (Screen Space - Fixed Position)
+                // Position: Right side of screen, vertically centered
+                const screenWidth = scene.scale.width;
+                const screenHeight = scene.scale.height;
+
+                const textX = screenWidth - 150; // Fixed on right side
+                const textY = screenHeight / 2;  // Vertically centered
+
+                const text = scene.add.text(textX, textY, 'PERFECT!\n+3', {
+                    fontFamily: '"Press Start 2P"',
+                    fontSize: '32px', // Larger font
+                    color: '#ffff00',
+                    stroke: '#000000',
+                    strokeThickness: 6,
+                    align: 'center'
+                });
+                text.setOrigin(0.5);
+                text.setScrollFactor(0); // Fix to camera (Screen Space)
+                text.setDepth(2000); // Very high depth
+                text.setScale(0);
+
+                // Animate Text (Pop in and out)
+                scene.tweens.add({
+                    targets: text,
+                    scaleX: 1,
+                    scaleY: 1,
+                    duration: 300,
+                    ease: 'Back.out',
+                    onComplete: () => {
+                        scene.tweens.add({
+                            targets: text,
+                            alpha: 0,
+                            scaleX: 1.2, // Pulse out
+                            scaleY: 1.2,
+                            duration: 500,
+                            delay: 500,
+                            onComplete: () => {
+                                text.destroy();
+                            }
+                        });
+                    }
+                });
             }
 
             // Matter.js World Bounds - Completely disabled to allow boxes to fall off screen
@@ -1404,10 +1490,10 @@
                     if (bodyA.gameObject === platform || bodyB.gameObject === platform) {
                         const otherBody = bodyA.gameObject === platform ? bodyB : bodyA;
                         if (otherBody && otherBody.gameObject && boxes.includes(otherBody.gameObject)) {
-                            // If it's NOT the first box (index 0), then it fell on the floor -> Game Over
+                            // If it's NOT the first box (index 0), then it fell on the floor -> Lose Life
                             if (boxes.indexOf(otherBody.gameObject) > 0) {
-                                gameOver();
-                                return; // Stop processing this collision as game is over
+                                handleLifeLoss(this, otherBody.gameObject);
+                                return; // Stop processing this collision
                             }
                         }
                     }
@@ -1425,22 +1511,62 @@
                                 body.gameObject.isFreezing = true;
                                 this.time.delayedCall(1000, () => {
                                     if (body.gameObject && body.gameObject.body) {
-                                            if (body.speed < 0.5 && Math.abs(body.angularVelocity) < 0.05) {
-                                                body.gameObject.setStatic(true);
-                                                body.gameObject.setRotation(0);
-                                                // console.log('Box made static at', body.gameObject.y);
+                                        if (body.speed < 0.5 && Math.abs(body.angularVelocity) < 0.05) {
+                                            body.gameObject.setStatic(true);
+                                            body.gameObject.setRotation(0);
+                                            // Align to grid (optional, but helps stability)
+                                            // body.gameObject.x = Math.round(body.gameObject.x); 
 
-                                                // Increment Score
-                                                if (!body.gameObject.hasScored) {
-                                                    body.gameObject.hasScored = true;
-                                                    score++;
-                                                    updateScoreUI();
+                                            if (!body.gameObject.hasScored) {
+                                                body.gameObject.hasScored = true;
+                                                let points = 1;
+
+                                                // Perfect Drop Logic
+                                                // Find the box directly below (or platform)
+                                                // Since we don't track "below" easily, we can check x-alignment with center or previous box.
+                                                // Simplest: Check alignment with screen center (if tower is straight) OR check alignment with the box with highest Y that is > current Y.
+                                                // Better: Check alignment with the box that this one is resting on.
+                                                // Matter.js collision pairs gave us the other body.
+                                                // Let's use the `pair` info we are in!
+                                                // Wait, we are in a delayed call, `pair` is not available here directly unless we passed it.
+                                                // But we can check `totalDeviation` logic or just check the last static box added.
+                                                // Let's iterate to find the box directly below.
+
+                                                // Find static box with closest Y below current box and overlapping X
+                                                const currentBox = body.gameObject;
+                                                const belowBox = boxes.find(b =>
+                                                    b !== currentBox &&
+                                                    b.body.isStatic &&
+                                                    b.y > currentBox.y &&
+                                                    Math.abs(b.x - currentBox.x) < (b.width / 2 + currentBox.width / 2)
+                                                );
+
+                                                if (belowBox || currentBox.y > height - 150) { // Check against platform (approx) if no box below
+                                                    const targetX = belowBox ? belowBox.x : width / 2; // Platform center is width/2
+                                                    const diff = Math.abs(currentBox.x - targetX);
+
+                                                    // TEMPORARY: Increased threshold for testing animation (was 5)
+                                                    if (diff <= 50) {
+                                                        points += 3;
+                                                        // Delay effect to sync with camera settle (200ms)
+                                                        this.time.delayedCall(200, () => {
+                                                            createPerfectDropEffect(this, currentBox.x, currentBox.y + currentBox.height / 2, currentBox.width);
+                                                        });
+                                                    }
                                                 }
-                                            } else {
-                                                body.gameObject.isFreezing = false;
+                                                score += points;
+                                                updateScoreUI();
+
+                                                // Track current game best height (min Y)
+                                                if (currentGameMinY === null || currentBox.y < currentGameMinY) {
+                                                    currentGameMinY = currentBox.y;
+                                                }
                                             }
+                                        } else {
+                                            body.gameObject.isFreezing = false;
                                         }
-                                    });
+                                    }
+                                });
                             }
                         }
                     });
@@ -1448,6 +1574,11 @@
             });
             // Create ends
             createMascot(this);
+
+            // Initialize Record Line
+            recordLine = this.add.graphics();
+            updateRecordLine(this);
+
             isSceneReady = true;
 
             // Hide loading screen
@@ -1483,7 +1614,7 @@
             // 1. Game Logic: Spawn new box if falling box is done
             if (fallingBox) {
                 // If falling box is static (landed)
-                if (fallingBox.body.isStatic) {
+                if (fallingBox.body && fallingBox.body.isStatic) {
                     fallingBox = null;
                     spawnBox(this);
                 }
@@ -1498,7 +1629,7 @@
 
                 if (Math.abs(firstBox.x - screenCenterX) > maxOffset) {
                     // console.log('First box fell off screen horizontally! Game Over.');
-                    gameOver();
+                    handleLifeLoss(this, firstBox);
                     return;
                 }
             }
@@ -1521,7 +1652,7 @@
                         // If it's index > 0 and y > height - 50 + buffer, it missed the stack.
                         if (boxes.indexOf(box) > 0) {
                             // console.log('Box fell off stack!');
-                            gameOver();
+                            handleLifeLoss(this, box);
                             return;
                         }
                     }
@@ -1535,13 +1666,14 @@
             });
 
             // Update Height UI
-            const towerHeight = Math.max(0, Math.floor((height - 100 - highestStaticY) / 128));
             const heightText = document.getElementById('height-display');
             if (heightText) heightText.innerText = 'ALTURA: ' + towerHeight + 'm';
 
             // 3. Camera Follow (Lazy Follow)
             if (!fallingBox) {
-                const minGap = 800; // Increased gap for earlier scroll (was 600)
+                // Dynamic gap based on screen height to ensure top box is always visible
+                // Target position: Top of stack should be around 80% down the screen (further from crane)
+                const minGap = height * 0.8;
                 const currentCraneY = this.cameras.main.scrollY + 50;
 
                 // If stack is too close to crane (highestStaticY is smaller than craneY + gap)
@@ -1560,7 +1692,26 @@
             // 5. Rope & Swing
             ropeGraphics.clear();
             if (currentBox && currentBox.isCarried) {
-                swingTime += delta * (craneSpeed * 0.0005);
+                // Calculate Speed Factor based on Box Density (Weight)
+                // Base density is around 0.01 (normal). Ice is 0.04-0.05.
+                // Heavier boxes should swing SLOWER.
+                // Factor = Base / Current. If Current > Base, Factor < 1 (Slower).
+                const baseDensity = 0.01;
+                const currentDensity = currentBox.body ? currentBox.body.density : baseDensity;
+
+                // Clamp density to avoid extreme values
+                const effectiveDensity = Math.max(baseDensity, currentDensity);
+
+                // Speed Multiplier: 
+                // Normal (0.01) -> 1.0
+                // Ice (0.05) -> 0.2 (Too slow? Let's tune)
+                // Let's use a gentler curve: 1 / sqrt(density ratio)
+                const densityRatio = effectiveDensity / baseDensity;
+                const speedFactor = 1 / Math.sqrt(densityRatio);
+
+                // Apply speed factor to swing time
+                swingTime += delta * (craneSpeed * speedFactor * 0.0005);
+
                 const ropeLength = 250; // Longer rope since it starts from top
                 const maxSwingAngle = 0.6; // Reduced from 1.0 to be less wide
                 const angle = Math.sin(swingTime) * maxSwingAngle;
@@ -1577,8 +1728,9 @@
                 // Analytical Velocity Calculation (Derivative)
                 // Theta = sin(swingTime) * maxSwingAngle
                 // dTheta/dt = cos(swingTime) * maxSwingAngle * speedFactor
-                const speedFactor = craneSpeed * 0.0005;
-                const dThetaDt = Math.cos(swingTime) * maxSwingAngle * speedFactor; // rad/ms
+                // Note: speedFactor here refers to the angular speed multiplier (craneSpeed * speedFactor * 0.0005)
+                const angularSpeed = craneSpeed * speedFactor * 0.0005;
+                const dThetaDt = Math.cos(swingTime) * maxSwingAngle * angularSpeed; // rad/ms
 
                 // Vx = L * cos(Theta) * dTheta/dt
                 // Vy = -L * sin(Theta) * dTheta/dt
@@ -1612,18 +1764,27 @@
             if (boxes.length === 0) {
                 // First box: prefer normal_square or normal_rect
                 selectedType = boxTypes.find(t => t.id.includes('normal')) || boxTypes[0];
-            } else {
+            }
+            // Filter box types based on difficulty (score)
+            // Ice boxes only appear after score >= 10
+            let availableTypes = boxTypes.filter(type => {
+                if (type.category.includes('ice') && score < 10) return false;
+                return true;
+            });
 
-                const totalChance = boxTypes.reduce((sum, t) => sum + t.chance, 0);
-                let random = Phaser.Math.Between(0, totalChance);
-                for (const type of boxTypes) {
-                    if (random <= type.chance) {
-                        selectedType = type;
-                        break;
-                    }
-                    random -= type.chance;
+            // Recalculate total chance for available types
+            let totalChance = 0;
+            for (const type of availableTypes) {
+                totalChance += type.chance;
+            }
+
+            let random = Phaser.Math.Between(0, totalChance);
+            for (const type of availableTypes) {
+                if (random <= type.chance) {
+                    selectedType = type;
+                    break;
                 }
-                if (!selectedType) selectedType = boxTypes[0]; // Fallback
+                random -= type.chance;
             }
 
             // Select Texture - Map new types to existing sprite categories
@@ -1783,20 +1944,14 @@
                 return;
             }
 
-            // Calcula instabilidade da torre
-            if (boxes.length === 0) {
-                faceSprite.setTexture('mascot_normal'); // normal
-                return;
+            // Lógica baseada em VIDAS (Lives)
+            if (lives === 3) {
+                faceSprite.setTexture('mascot_normal'); // Feliz (3 vidas)
+            } else if (lives === 2) {
+                faceSprite.setTexture('mascot_worried'); // Preocupado (2 vidas)
+            } else {
+                faceSprite.setTexture('mascot_worried2'); // Super Preocupado (1 vida)
             }
-            // Usar a pilha (caixas já paradas) como referência
-            const staticBoxes = boxes.filter(b => b.body && b.body.isStatic);
-            const refBox = staticBoxes.length > 0
-                ? staticBoxes.reduce((top, b) => (b.y < top.y ? b : top)) // caixa mais alta (menor y)
-                : boxes[boxes.length - 1];
-            const centerX = scene.scale.width / 2;
-            const deviation = Math.abs(refBox.x - centerX);
-            const isStable = deviation < 25;
-            faceSprite.setTexture(isStable ? 'mascot_normal' : 'mascot_worried');
         }
 
         function triggerLever(scene) {
@@ -1819,10 +1974,17 @@
 
             isGameActive = true;
             score = 0;
+            lives = 3; // Reset lives
+            currentGameMinY = null; // Reset current game tracking
+            updateLivesUI();
             craneSpeed = gameConfig.baseSpeed;
 
+            // Draw record line from STORAGE (do not update it during game)
             if (game) {
                 const scene = game.scene.scenes[0];
+
+                // Draw record line from STORAGE (do not update it during game)
+                if (recordLine) updateRecordLine(scene);
 
                 // 1. Destroy all existing boxes
                 boxes.forEach(box => {
@@ -1896,19 +2058,19 @@
                 const box = document.createElement('img');
                 box.className = 'rain-box';
 
-            // Randomly select a sprite from availableSprites (squares only)
-            let spriteSrc = 'assets/sprites/normal/1.png';
-            const squareSprites = [...availableSprites.normal, ...availableSprites.goal]; // goal only has squares now
+                // Randomly select a sprite from availableSprites (squares only)
+                let spriteSrc = 'assets/sprites/normal/1.png';
+                const squareSprites = [...availableSprites.normal, ...availableSprites.goal]; // goal only has squares now
 
-            if (squareSprites.length > 0) {
-                const randomKey = Phaser.Utils.Array.GetRandom(squareSprites);
-                if (randomKey.startsWith('normal_')) {
-                    const num = randomKey.split('_')[1];
-                    spriteSrc = `assets/sprites/normal/${num}.png`;
-                } else if (randomKey === 'goal_square') {
-                    spriteSrc = `assets/sprites/goal/${randomKey}.png`;
+                if (squareSprites.length > 0) {
+                    const randomKey = Phaser.Utils.Array.GetRandom(squareSprites);
+                    if (randomKey.startsWith('normal_')) {
+                        const num = randomKey.split('_')[1];
+                        spriteSrc = `assets/sprites/normal/${num}.png`;
+                    } else if (randomKey === 'goal_square') {
+                        spriteSrc = `assets/sprites/heavy/${randomKey}.png`; // Corrected path for goal sprites
+                    }
                 }
-            }
 
                 box.src = spriteSrc;
 
@@ -1981,6 +2143,11 @@
             }, 80); // Spawn faster (every 80ms)
         }
 
+
+
+
+
+
         function stopGameOverRain() {
             if (fallingBoxesInterval) {
                 clearInterval(fallingBoxesInterval);
@@ -2005,40 +2172,49 @@
             isGameActive = false;
             if (game) {
                 game.scene.pause('default');
+
+                // Update Session Record if current game beat it
+                if (currentGameMinY !== null) {
+                    if (sessionBestY === null || currentGameMinY < sessionBestY) {
+                        sessionBestY = currentGameMinY;
+                        sessionStorage.setItem('sessionBestY', sessionBestY);
+                        // Note: We don't redraw the line here, it will update next game
+                    }
+                }
+
+                const finalScore = score; // Use global score variable
+                logEvent('GAME_OVER', { score: finalScore });
+                const scoreElement = document.getElementById('final-score');
+                if (scoreElement) scoreElement.innerText = 'SCORE: ' + finalScore;
+
+                // Show/hide clear button based on localStorage
+                const clearBtn = document.getElementById('clear-btn');
+                const savedName = localStorage.getItem('playerName');
+                if (clearBtn) {
+                    clearBtn.style.display = savedName ? 'block' : 'none';
+                }
+
+                const gameOverScreen = document.getElementById('game-over-screen');
+                if (gameOverScreen) {
+                    gameOverScreen.classList.remove('hidden');
+                    gameOverScreen.style.display = 'flex'; // Force display flex
+
+                    // Start Rain
+                    startGameOverRain();
+
+                    // Reset Menu
+                    gameOverMenuIndex = 0;
+                    updateGameOverMenu();
+                }
+
+                // Focus on first input
+                setTimeout(() => {
+                    const firstInput = document.getElementById('char1');
+                    if (firstInput) firstInput.focus();
+                }, 100);
+
+                logEvent('GAME_OVER', { score: finalScore });
             }
-
-            const finalScore = score; // Use global score variable
-            logEvent('GAME_OVER', { score: finalScore });
-            const scoreElement = document.getElementById('final-score');
-            if (scoreElement) scoreElement.innerText = 'SCORE: ' + finalScore;
-
-            // Show/hide clear button based on localStorage
-            const clearBtn = document.getElementById('clear-btn');
-            const savedName = localStorage.getItem('playerName');
-            if (clearBtn) {
-                clearBtn.style.display = savedName ? 'block' : 'none';
-            }
-
-            const gameOverScreen = document.getElementById('game-over-screen');
-            if (gameOverScreen) {
-                gameOverScreen.classList.remove('hidden');
-                gameOverScreen.style.display = 'flex'; // Force display flex
-
-                // Start Rain
-                startGameOverRain();
-
-                // Reset Menu
-                gameOverMenuIndex = 0;
-                updateGameOverMenu();
-            }
-
-            // Focus on first input
-            setTimeout(() => {
-                const firstInput = document.getElementById('char1');
-                if (firstInput) firstInput.focus();
-            }, 100);
-
-            logEvent('GAME_OVER', { score: finalScore });
         }
 
         // --- ANTI-HACK LOG SYSTEM ---
@@ -2053,7 +2229,199 @@
             // console.log('Log:', action, details);
         }
 
-        // Global Keyboard Listener for Game Over Menu
+        function updateLivesUI() {
+            const container = document.getElementById('lives-display');
+            if (!container) return;
+            container.innerHTML = ''; // Clear
+
+            // Always show 3 hearts
+            for (let i = 0; i < 3; i++) {
+                const img = document.createElement('img');
+                // If index is less than current lives, show filled heart. Otherwise, show empty heart.
+                if (i < lives) {
+                    // Filled Heart
+                    img.src = 'assets/sprites/heart/heart-full.svg';
+                } else {
+                    // Empty Heart
+                    img.src = 'assets/sprites/heart/heart-empty.svg';
+                }
+                img.className = 'heart-icon';
+                img.id = `heart-${i}`; // Add ID for targeting
+                container.appendChild(img);
+            }
+        }
+
+        function handleLifeLoss(scene, box) {
+            // Prevent multiple triggers for the same box
+            if (box.hasCausedDamage) return;
+            box.hasCausedDamage = true;
+
+            // 1. Red Flash
+            const overlay = document.getElementById('damage-overlay');
+            if (overlay) {
+                overlay.style.opacity = '0.5';
+                setTimeout(() => {
+                    overlay.style.opacity = '0';
+                }, 150);
+            }
+
+            // 2. Falling Heart Animation
+            // We are about to lose life at index `lives - 1`
+            const heartIndex = lives - 1;
+            const heartElement = document.getElementById(`heart-${heartIndex}`);
+
+            if (heartElement) {
+                // Create a clone for animation
+                const rect = heartElement.getBoundingClientRect();
+                const fallingHeart = heartElement.cloneNode(true);
+                fallingHeart.style.position = 'fixed';
+                fallingHeart.style.left = rect.left + 'px';
+                fallingHeart.style.top = rect.top + 'px';
+                fallingHeart.style.zIndex = '1000';
+                fallingHeart.style.transition = 'transform 1s ease-in, opacity 1s ease-in';
+                document.body.appendChild(fallingHeart);
+
+                // Animate Fall
+                requestAnimationFrame(() => {
+                    fallingHeart.style.transform = `translateY(300px) rotate(45deg)`;
+                    fallingHeart.style.opacity = '0';
+                });
+
+                // Cleanup
+                setTimeout(() => {
+                    fallingHeart.remove();
+                }, 1000);
+            }
+
+            lives--;
+            updateLivesUI();
+
+            // Destroy the box
+            if (box) {
+                // Remove from boxes array
+                const index = boxes.indexOf(box);
+                if (index > -1) {
+                    boxes.splice(index, 1);
+                }
+                // Remove from physics world and destroy
+                scene.matter.world.remove(box);
+                box.destroy();
+                if (box === fallingBox) {
+                    fallingBox = null;
+                    // Spawn new box after a delay
+                    scene.time.delayedCall(500, () => spawnBox(scene));
+                } else {
+                    // It was a static box that fell.
+                    // If no boxes left, we might need to ensure gameplay continues.
+                    if (boxes.length === 0 && !fallingBox) {
+                        scene.time.delayedCall(500, () => spawnBox(scene));
+                    }
+                }
+                // If the box that fell was the `fallingBox`
+                if (box === fallingBox) {
+                    fallingBox = null;
+                    scene.time.delayedCall(500, () => spawnBox(scene));
+                }
+            }
+        }
+
+
+
+
+        function updateRecordLine(scene) {
+            if (!recordLine) return;
+            recordLine.clear();
+            if (sessionBestY !== null) {
+                recordLine.lineStyle(2, 0x00ffff, 0.5); // Cyan, semi-transparent
+                // Draw dashed line
+                const dash = 10;
+                const gap = 10;
+                const y = sessionBestY;
+                for (let x = 0; x < scene.scale.width; x += dash + gap) {
+                    recordLine.moveTo(x, y);
+                    recordLine.lineTo(x + dash, y);
+                }
+                recordLine.strokePath();
+
+                // Add "RECORD" text if not exists?
+                // For now just the line.
+            }
+        }
+
+        function createPerfectDropEffect(scene, x, y, boxWidth = 100) {
+            // "Fusion Seal" Animation - REFINED
+            // Occurs 200ms after landing
+
+            // 1. "PERFECT!" Text (Screen Space - Fixed Position)
+            // Position: Right side of screen, vertically centered
+            const screenWidth = scene.scale.width;
+            const screenHeight = scene.scale.height;
+
+            const textX = screenWidth - 150; // Fixed on right side
+            const textY = screenHeight / 2;  // Vertically centered
+
+            const text = scene.add.text(textX, textY, 'PERFECT!\n+3', {
+                fontFamily: '"Press Start 2P"',
+                fontSize: '32px', // Larger font
+                color: '#ffff00',
+                stroke: '#000000',
+                strokeThickness: 6,
+                align: 'center'
+            });
+            text.setOrigin(0.5);
+            text.setScrollFactor(0); // Fix to camera (Screen Space)
+            text.setDepth(2000); // Very high depth
+            text.setScale(0);
+
+            // Animate Text (Pop in and out)
+            scene.tweens.add({
+                targets: text,
+                scaleX: 1,
+                scaleY: 1,
+                duration: 300,
+                ease: 'Back.out',
+                onComplete: () => {
+                    scene.tweens.add({
+                        targets: text,
+                        alpha: 0,
+                        scaleX: 1.2, // Pulse out
+                        scaleY: 1.2,
+                        duration: 500,
+                        delay: 500,
+                        onComplete: () => {
+                            text.destroy();
+                        }
+                    });
+                }
+            });
+            target.fillCircle(x, y, 5); // Inner dot
+
+            target.setScale(2);
+            target.setAlpha(0);
+
+            scene.tweens.add({
+                targets: target,
+                scaleX: 1,
+                scaleY: 1,
+                alpha: 1,
+                duration: 200,
+                ease: 'Cubic.out',
+                onComplete: () => {
+                    scene.tweens.add({
+                        targets: target,
+                        scaleX: 0.5,
+                        scaleY: 0.5,
+                        alpha: 0,
+                        duration: 200,
+                        delay: 100,
+                        onComplete: () => {
+                            target.destroy();
+                        }
+                    });
+                }
+            });
+        }
+
         document.addEventListener('keydown', (e) => {
             const gameOverScreen = document.getElementById('game-over-screen');
             if (!gameOverScreen || gameOverScreen.classList.contains('hidden')) return;
@@ -2439,21 +2807,25 @@
         </div>
 
         <div class="debug-control-group" style="margin-bottom: 20px;">
-            <label style="display: block; margin-bottom: 10px; font-size: 10px; color: #aaa;">CHANCE CAIXA META (%)</label>
+            <label style="display: block; margin-bottom: 10px; font-size: 10px; color: #aaa;">CHANCE CAIXA META
+                (%)</label>
             <input type="range" id="debug-goal-chance" min="0" max="30" step="1" value="10" style="width: 100%;">
             <span id="val-goal-chance"
                 style="display: block; text-align: right; font-size: 10px; margin-top: 5px;">10</span>
         </div>
 
         <div class="debug-control-group" style="margin-bottom: 20px;">
-            <label style="display: block; margin-bottom: 10px; font-size: 10px; color: #aaa;">DENSIDADE CAIXA META</label>
-            <input type="range" id="debug-goal-density" min="0.02" max="0.12" step="0.005" value="0.07" style="width: 100%;">
+            <label style="display: block; margin-bottom: 10px; font-size: 10px; color: #aaa;">DENSIDADE CAIXA
+                META</label>
+            <input type="range" id="debug-goal-density" min="0.02" max="0.12" step="0.005" value="0.07"
+                style="width: 100%;">
             <span id="val-goal-density"
                 style="display: block; text-align: right; font-size: 10px; margin-top: 5px;">0.07</span>
         </div>
 
         <div class="debug-control-group" style="margin-bottom: 20px;">
-            <label style="display: block; margin-bottom: 10px; font-size: 10px; color: #aaa;">CHANCE CAIXA GELO (%)</label>
+            <label style="display: block; margin-bottom: 10px; font-size: 10px; color: #aaa;">CHANCE CAIXA GELO
+                (%)</label>
             <input type="range" id="debug-ice-chance" min="0" max="30" step="1" value="10" style="width: 100%;">
             <span id="val-ice-chance"
                 style="display: block; text-align: right; font-size: 10px; margin-top: 5px;">10</span>
@@ -2461,7 +2833,8 @@
 
         <div class="debug-control-group" style="margin-bottom: 20px;">
             <label style="display: block; margin-bottom: 10px; font-size: 10px; color: #aaa;">FRIÇÃO CAIXA GELO</label>
-            <input type="range" id="debug-ice-friction" min="0" max="0.2" step="0.005" value="0.08" style="width: 100%;">
+            <input type="range" id="debug-ice-friction" min="0" max="0.2" step="0.005" value="0.08"
+                style="width: 100%;">
             <span id="val-ice-friction"
                 style="display: block; text-align: right; font-size: 10px; margin-top: 5px;">0.08</span>
         </div>
@@ -2657,11 +3030,11 @@
 
         // Responsive Resize Listener
         window.addEventListener('resize', () => {
-                if (game) {
-                    const width = window.innerWidth;
-                    const height = window.innerHeight;
+            if (game) {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
 
-                    game.scale.resize(width, height);
+                game.scale.resize(width, height);
 
                 // Update background size if needed
                 if (game.scene.scenes[0] && game.scene.scenes[0].background) {
@@ -2671,19 +3044,19 @@
                     bg.setTileScale(bgScale, bgScale);
                 }
 
-                    // Update Mascot Visibility & Position
-                    if (mascotBody) {
-                        const isDesktop = width >= 768;
-                        isMascotVisible = isDesktop;
-                        mascotBody.setVisible(isDesktop);
-                        if (mascotLever) mascotLever.setVisible(isDesktop);
+                // Update Mascot Visibility & Position
+                if (mascotBody) {
+                    const isDesktop = width >= 768;
+                    isMascotVisible = isDesktop;
+                    mascotBody.setVisible(isDesktop);
+                    if (mascotLever) mascotLever.setVisible(isDesktop);
 
-                        if (isDesktop) {
-                            positionMascot(width, height);
-                        }
+                    if (isDesktop) {
+                        positionMascot(width, height);
                     }
                 }
-            });
+            }
+        });
 
     </script>
 </body>
