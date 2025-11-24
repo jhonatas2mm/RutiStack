@@ -18,6 +18,19 @@
             user-select: none;
         }
 
+        :root {
+            --bg-grad: linear-gradient(180deg, #cfe9e3 0%, #a2d7e6 50%, #8bb6d9 100%);
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: var(--bg-grad);
+        }
+
         #game-container {
             width: 100vw;
             height: 100vh;
@@ -25,6 +38,12 @@
             position: relative;
             z-index: 1;
             /* Below the game-over modal */
+            background: var(--bg-grad);
+        }
+
+        /* Ensure Phaser canvas stays transparent so gradient shows through */
+        #game-container canvas {
+            background: transparent !important;
         }
 
         /* UI Overlay */
@@ -43,7 +62,7 @@
         }
 
         .pixel-btn {
-            background-color: #ffcc00;
+            background-color: #fff;
             border: 4px solid #fff;
             box-shadow: 4px 4px 0px #000;
             color: #000;
@@ -61,6 +80,35 @@
             box-shadow: 0px 0px 0px #000;
         }
 
+        @keyframes loading-gradient-cycle {
+            0% {
+                background: linear-gradient(180deg, #cfe9e3 0%, #a2d7e6 50%, #8bb6d9 100%);
+            }
+
+            33% {
+                background: linear-gradient(180deg, #c9d4ff 0%, #f1c6ff 50%, #ffcad4 100%);
+            }
+
+            66% {
+                background: linear-gradient(180deg, #ffcba4 0%, #ff9a9e 50%, #ff5f6d 100%);
+            }
+
+            100% {
+                background: linear-gradient(180deg, #cfe9e3 0%, #a2d7e6 50%, #8bb6d9 100%);
+            }
+        }
+
+        #bg-gradient-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+            background: var(--bg-grad); /* will be updated dynamically */
+        }
+
         .pixel-box {
             background: rgba(0, 0, 0, 0.8);
             border: 4px solid #fff;
@@ -72,7 +120,8 @@
         #lives-display {
             position: fixed;
             top: 20px;
-            left: 20px;
+            left: 50%;
+            transform: translateX(-50%);
             /* Moved to left */
             display: flex;
             gap: 5px;
@@ -88,10 +137,8 @@
 
         #score-display {
             position: fixed;
-            top: 70px;
-            /* Increased spacing (was 50px) */
+            top: 20px;
             left: 20px;
-            /* Moved to left */
             color: #fff;
             font-family: 'Press Start 2P', cursive;
             font-size: 20px;
@@ -286,12 +333,11 @@
         /* Game Over Screen - Modal Overlay - Updated 00:10 */
         #game-over-screen {
             position: fixed !important;
-            /* Force fixed positioning */
             top: 0 !important;
             left: 0 !important;
             width: 100% !important;
             height: 100% !important;
-            background: rgba(0, 0, 0, 0.7);
+            background: none;
             justify-content: center !important;
             align-items: center !important;
             z-index: 10000 !important;
@@ -299,23 +345,17 @@
         }
 
         .game-over-content {
-            background: rgba(20, 20, 40, 0.95);
-            border: 4px solid #00ffff;
-            /* Primary color (cyan) */
-            padding: 40px;
+            background: none;
+            border: none;
+            padding: 20px;
             text-align: center;
             max-width: 600px;
-            /* Increased from 400px to fit longer text */
             width: 90%;
             height: auto;
-            /* Auto height based on content */
             max-height: 80vh;
-            /* Maximum 80% of viewport height */
             overflow-y: auto;
-            /* Scroll if content is too long */
             position: relative;
             z-index: 100 !important;
-            /* High enough to be above falling boxes (z-index: -1) */
         }
 
         .hidden {
@@ -324,33 +364,44 @@
 
         /* Name Input Styles */
         #name-input-container {
-            display: flex;
-            gap: 10px;
+            display: grid;
+            grid-template-columns: repeat(8, minmax(0, 1fr));
+            column-gap: 18px;
+            row-gap: 0;
             margin-bottom: 20px;
             justify-content: center;
-            /* Center inputs */
+            align-items: center;
+            width: 100%;
+        }
+
+        .input-group {
+            display: grid;
+            grid-template-columns: repeat(8, minmax(0, 1fr));
+            column-gap: 18px;
+            row-gap: 0;
+            width: 100%;
         }
 
 
 
         .char-input {
-            width: 40px;
+            width: 100%;
             height: 50px;
-            background: transparent;
-            border: 2px solid #fff;
-            color: #00ffff;
-            /* Neon Blue */
+            background: #fff;
+            border: 4px solid #fff;
+            color: #000;
             font-family: 'Press Start 2P', cursive;
             font-size: 24px;
             text-align: center;
             text-transform: uppercase;
             outline: none;
             caret-color: transparent;
+            box-shadow: 4px 4px 0px #000;
         }
 
         .char-input:focus {
             outline: none;
-            border-color: #00ffff;
+            border-color: #000;
             animation: blink-focus 1s infinite;
         }
 
@@ -768,16 +819,19 @@
 
 <body>
 
+    <!-- Dynamic Gradient Layer (behind the game canvas) -->
+    <div id="bg-gradient-layer"></div>
+
     <!-- Loading Screen -->
     <div id="loading-screen"
-        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #0f0f1e; background-image: url('assets/background/bg_digital.png'); background-size: cover; background-position: center; display: flex; justify-content: center; align-items: center; z-index: 99999; flex-direction: column; gap: 30px;">
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(180deg, #cfe9e3 0%, #a2d7e6 50%, #8bb6d9 100%); animation: loading-gradient-cycle 12s ease-in-out infinite; background-size: 100% 100%; display: flex; justify-content: center; align-items: center; z-index: 99999; flex-direction: column; gap: 30px;">
         <div
-            style="background: rgba(15, 15, 30, 0.8); padding: 40px; border-radius: 10px; display: flex; flex-direction: column; align-items: center; gap: 30px;">
+            style="background: none; padding: 40px; display: flex; flex-direction: column; align-items: center; gap: 30px;">
             <img src="assets/sprites/normal/1.png" alt="Loading"
                 style="width: 128px; height: 128px; image-rendering: pixelated; animation: spin 2s linear infinite;">
-            <div
-                style="color: #00ffff; font-family: 'Press Start 2P'; font-size: 16px; animation: pulse 1.5s infinite;">
-                CARREGANDO...</div>
+        <div
+            style="color: #ffffff; font-family: 'Press Start 2P'; font-size: 16px; animation: pulse 1.5s infinite; text-shadow: 2px 2px 0 #000;">
+            CARREGANDO...</div>
         </div>
     </div>
 
@@ -793,16 +847,24 @@
     <div id="lives-display"></div>
     <div id="score-display">SCORE: 0</div>
 
-    <!-- Start Screen -->
+    <!-- Top Buttons -->
+    <div id="top-right-buttons"
+            style="position: fixed; top: 20px; right: 20px; z-index: 999; display: flex; gap: 10px; align-items: center;">
+        <button id="debug-btn" class="hidden"
+            style="background: transparent; border: none; padding: 8px; cursor: pointer; pointer-events: auto;">
+            <img src="assets/sprites/icons/settgings.svg" alt="Config" width="26" height="26"
+                style="image-rendering: pixelated; filter: drop-shadow(3px 3px 0 #000); display: block;">
+        </button>
+        <button id="god-btn"
+            style="padding: 8px 14px; font-size: 10px; background: #fff; border: 4px solid #fff; color: #000; box-shadow: 4px 4px 0px #000; font-family: 'Press Start 2P'; cursor: pointer; text-transform: uppercase;">
+            GOD
+        </button>
+        <button id="exit-btn"
+            style="padding: 8px 14px; font-size: 10px; background: #fff; border: 4px solid #fff; color: #000; box-shadow: 4px 4px 0px #000; font-family: 'Press Start 2P'; cursor: pointer; text-transform: uppercase;"
+            onclick="window.location.href='index.html'">SAIR</button>
+    </div>
 
-    <!-- Exit Button (Top Right - Secondary Style) -->
-    <button id="exit-btn"
-        style="position: fixed; top: 20px; right: 20px; z-index: 999; background: transparent; border: 2px solid #fff; color: #fff; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-family: 'Press Start 2P'; font-size: 10px; box-shadow: 4px 4px 0px #000; transition: all 0.2s;"
-        onmouseover="this.style.transform='translate(-2px, -2px)'; this.style.boxShadow='6px 6px 0px #000'"
-        onmouseout="this.style.transform='translate(0, 0)'; this.style.boxShadow='4px 4px 0px #000'"
-        onclick="window.location.href='index.html'">
-        SAIR
-    </button>
+    <!-- Start Screen -->
     <div id="instructionText"
         style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ffffff; font-family: 'Press Start 2P'; font-size: 12px; pointer-events: none; z-index: 50; text-align: center; line-height: 1.5; text-shadow: 2px 2px 0 #000;">
         CLIQUE OU ESPAÇO<br>PARA SOLTAR
@@ -910,6 +972,35 @@
         }
 
 
+        // Load Custom Sprites from Firestore (cached in localStorage)
+        async function loadCustomSprites() {
+            if (!isFirebaseReady) {
+                console.log("Firebase offline - using cached sprites from localStorage");
+                return;
+            }
+
+            try {
+                for (const boxType of ['normal', 'goal']) {
+                    const spritesRef = doc(db, "sprites", boxType);
+                    const spritesSnap = await getDoc(spritesRef);
+
+                    if (spritesSnap.exists()) {
+                        const data = spritesSnap.data();
+                        const spriteUrls = data.urls || data.sprites || [];
+
+                        if (spriteUrls.length > 0) {
+                            localStorage.setItem(`sprites_${boxType}`, JSON.stringify(spriteUrls));
+                            console.log(`Loaded ${spriteUrls.length} sprite URLs from Firestore for ${boxType}`);
+                        }
+                    } else {
+                        console.log(`No remote sprites found for ${boxType}`);
+                    }
+                }
+            } catch (e) {
+                console.error("Error loading sprites from Firestore:", e);
+            }
+        }
+
 
         // --- PHASER GAME ---
         const config = {
@@ -917,7 +1008,12 @@
             width: window.innerWidth,
             height: window.innerHeight,
             parent: 'game-container',
-            backgroundColor: '#0f0f1e',
+            backgroundColor: 'rgba(0,0,0,0)',
+            transparent: true,
+            render: {
+                transparent: true,
+                clearBeforeRender: true
+            },
             physics: {
                 default: 'matter',
                 matter: {
@@ -941,6 +1037,8 @@
         let score = 0;
         let lives = 3; // New Lives System
         let recordLine; // Graphics for record line
+        let recordLineLabel; // "Você" label
+        let rankingLines = []; // {y, gfx, label, passed}
         let sessionBestY = sessionStorage.getItem('sessionBestY') ? parseFloat(sessionStorage.getItem('sessionBestY')) : null; // Stored best from previous games
         let currentGameMinY = null; // Track best height of CURRENT game
         let craneSpeed = 2;
@@ -949,6 +1047,7 @@
         let isSceneReady = false; // Flag to ensure create() has finished
         let instructionHidden = false; // Flag to hide instruction only once
         let gameStartTime = Date.now(); // Track game start time for anti-hack logging
+        let godMode = false; // Infinite lives toggle
 
         // Mascot Variables
         let mascotBody;
@@ -972,6 +1071,7 @@
         };
 
         let lastMouseClickTs = Date.now();
+        let rankingHeights = [];
 
         // Box Configuration (Data-Driven)
         // Box Configuration (Data-Driven)
@@ -1041,8 +1141,8 @@
                 textures: ['ice_1', 'ice_2', 'ice_3'],
                 width: 143,
                 height: 143,
-                densityRange: [0.08, 0.1], // Significantly increased density (was 0.04-0.05)
-                friction: 0.08,
+                densityRange: [0.11, 0.13], // heavier to fall faster
+                friction: 0.16, // less sliding
                 bounce: 0.02,
                 variations: 1,
                 sizeIncrement: 0
@@ -1055,8 +1155,8 @@
                 textures: ['ice_rect_1', 'ice_rect_2', 'ice_rect_3'],
                 width: 172,
                 height: 98,
-                densityRange: [0.08, 0.1], // Significantly increased density (was 0.04-0.05)
-                friction: 0.08,
+                densityRange: [0.11, 0.13], // heavier to fall faster
+                friction: 0.16, // less sliding
                 bounce: 0.02,
                 variations: 1,
                 sizeIncrement: 0
@@ -1086,13 +1186,115 @@
             }
         });
 
+        // Background palettes: calm pastels -> mid vibrance -> hard/red
+        const backgroundPalettes = [
+            { id: 'calm', top: '#cfe9e3', mid: '#a2d7e6', bottom: '#8bb6d9' },       // gentle teal/blue
+            { id: 'mid', top: '#c9d4ff', mid: '#f1c6ff', bottom: '#ffcad4' },        // dreamy lilac/peach
+            { id: 'hard', top: '#ffcba4', mid: '#ff9a9e', bottom: '#ff5f6d' }        // vibrant warm/red
+        ];
+
         let ropeGraphics;
         let swingTime = 0;
         let buttonSprite;
-        let background; // TileSprite
+        let background; // Gradient background
+        let currentBgPhase = -1; // Track which gradient phase is active
+        let currentBgPalette = backgroundPalettes[0];
+        let prevBgPalette = backgroundPalettes[0];
+        let bgTransitionStart = null;
+        const BG_TRANSITION_MS = 2000;
+
+        function blendHex(c1, c2, t) {
+            const n1 = parseInt(c1.replace('#', ''), 16);
+            const n2 = parseInt(c2.replace('#', ''), 16);
+            const r1 = (n1 >> 16) & 255, g1 = (n1 >> 8) & 255, b1 = n1 & 255;
+            const r2 = (n2 >> 16) & 255, g2 = (n2 >> 8) & 255, b2 = n2 & 255;
+            const r = Math.round(r1 + (r2 - r1) * t);
+            const g = Math.round(g1 + (g2 - g1) * t);
+            const b = Math.round(b1 + (b2 - b1) * t);
+            return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        }
 
         function applyDifficultyScaling() {
             craneSpeed = gameConfig.baseSpeed + (score * gameConfig.difficultyMultiplier);
+        }
+
+        // Choose palette phase by score (acts as difficulty stage)
+        function getDifficultyPhaseByScore(currentScore) {
+            if (currentScore >= 25) return 2; // hardest - red
+            if (currentScore >= 10) return 1; // mid - lilac/peach
+            return 0; // calm - teal
+        }
+
+        function lerpPalette(a, b, t) {
+            return {
+                top: blendHex(a.top, b.top, t),
+                mid: blendHex(a.mid, b.mid, t),
+                bottom: blendHex(a.bottom, b.bottom, t)
+            };
+        }
+
+        // Generate/update gradient background for current phase
+        function updateBackgroundGradient(scene, force = false) {
+            if (!scene || !backgroundPalettes.length) return;
+            const phase = getDifficultyPhaseByScore(score);
+            if (!force && phase === currentBgPhase && !bgTransitionStart) return;
+
+            const targetPalette = backgroundPalettes[phase] || backgroundPalettes[0];
+            if (phase !== currentBgPhase || force) {
+                prevBgPalette = currentBgPalette;
+                currentBgPhase = phase;
+                bgTransitionStart = Date.now();
+            }
+
+            let t = 1;
+            if (bgTransitionStart) {
+                t = Math.min(1, (Date.now() - bgTransitionStart) / BG_TRANSITION_MS);
+                if (t >= 1) bgTransitionStart = null;
+            }
+            currentBgPalette = lerpPalette(prevBgPalette, targetPalette, t);
+            const palette = currentBgPalette;
+            const { width, height } = scene.scale;
+
+            // Update DOM gradient fallback (ensures visible background even if Phaser texture fails)
+            const domBg = document.getElementById('bg-gradient-layer');
+            if (domBg) {
+                domBg.style.background = `linear-gradient(180deg, ${palette.top} 0%, ${palette.mid} 50%, ${palette.bottom} 100%)`;
+            }
+            document.documentElement.style.setProperty('--bg-grad', `linear-gradient(180deg, ${palette.top} 0%, ${palette.mid} 50%, ${palette.bottom} 100%)`);
+
+            // Create gradient texture via HTML canvas (works in WebGL and Canvas)
+            const canvas = document.createElement('canvas');
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+            const grd = ctx.createLinearGradient(0, 0, 0, height);
+            const midTop = blendHex(palette.top, palette.mid, 0.5);
+            const midBottom = blendHex(palette.mid, palette.bottom, 0.5);
+            grd.addColorStop(0, palette.top);
+            grd.addColorStop(0.33, midTop);
+            grd.addColorStop(0.66, midBottom);
+            grd.addColorStop(1, palette.bottom);
+            ctx.fillStyle = grd;
+            ctx.fillRect(0, 0, width, height);
+
+            if (scene.textures.exists('dynamic_bg')) {
+                scene.textures.remove('dynamic_bg');
+            }
+            scene.textures.addCanvas('dynamic_bg', canvas);
+
+            if (background) {
+                background.setTexture('dynamic_bg');
+                background.setDisplaySize(width, height);
+                background.setPosition(width / 2, height / 2);
+            } else {
+                background = scene.add.image(width / 2, height / 2, 'dynamic_bg');
+                background.setScrollFactor(0);
+                background.setDepth(-100);
+            }
+
+            currentBgPhase = phase;
         }
 
         function updateScoreUI() {
@@ -1108,6 +1310,10 @@
                 }
             }
             applyDifficultyScaling();
+
+            // Refresh background gradient when score crosses phase thresholds
+            const scene = (game && game.scene && game.scene.scenes && game.scene.scenes[0]) ? game.scene.scenes[0] : null;
+            updateBackgroundGradient(scene);
         }
 
         function initGame() {
@@ -1125,6 +1331,40 @@
         function preload() {
             this.load.crossOrigin = 'anonymous'; // Fix CORS for Firebase Storage
             const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+
+        // Load ranking heights (optional, from localStorage)
+        try {
+            rankingHeights = JSON.parse(localStorage.getItem('rankingBestHeights') || '[]')
+                .filter(v => typeof v === 'number');
+        } catch (e) {
+            rankingHeights = new Array(5).fill(0);
+            localStorage.setItem('rankingBestHeights', JSON.stringify(rankingHeights));
+        }
+        if (rankingHeights.length === 0) {
+            rankingHeights = new Array(5).fill(0); // default placeholders
+            localStorage.setItem('rankingBestHeights', JSON.stringify(rankingHeights));
+        }
+
+            // God button listener (set up once DOM is ready)
+            const godBtn = document.getElementById('god-btn');
+            if (godBtn && !godBtn.dataset.bound) {
+                godBtn.dataset.bound = '1';
+                godBtn.addEventListener('click', () => {
+                godMode = !godMode;
+                    godBtn.textContent = godMode ? 'GOD ON' : 'GOD';
+                    if (godMode) {
+                        godBtn.style.background = '#00aa55';
+                        godBtn.style.color = '#000';
+                        godBtn.style.borderColor = '#fff';
+                        godBtn.style.boxShadow = '4px 4px 0px #003322';
+                    } else {
+                        godBtn.style.background = '#fff';
+                        godBtn.style.color = '#000';
+                        godBtn.style.borderColor = '#fff';
+                        godBtn.style.boxShadow = '4px 4px 0px #000';
+                    }
+                });
+            }
 
             // Box Textures (Local Assets - Blind Load 1-20)
             for (let i = 1; i <= 20; i++) {
@@ -1387,19 +1627,11 @@
             // this.matter.world.setBounds() - commented out intentionally
             this.matter.world.setGravity(0, gameConfig.gravity);
 
-            // Background (Digital Circuit)
-            // Use TileSprite for repetition
-            background = this.add.tileSprite(width / 2, height / 2, width, height, 'bg_digital');
-            background.setScrollFactor(0); // Fixed to camera, but texture will scroll
-            background.setDepth(-100);
+            // Background (dynamic gradient, scrolls softly with camera)
+            updateBackgroundGradient(this, true);
+            this.cameras.main.setBackgroundColor('rgba(0,0,0,0)');
 
-            // Scale background to fit width if needed, or keep original aspect ratio
-            // The image is 1440 wide, screen might be different. 
-            // Let's ensure it covers the width.
-            const bgScale = Math.max(width / 1440, 1);
-            background.setTileScale(bgScale, bgScale);
-
-            // Platform
+            // Platform (visible base)
             const platform = this.matter.add.image(width / 2, height - 50, 'platform', null, { isStatic: true });
             platform.setDisplaySize(width, 100);
             platform.setDepth(5);
@@ -1593,6 +1825,7 @@
         function update(time, delta) {
             if (!isSceneReady) return;
             updateMascotState(this);
+            updateRecordLine(this);
             if (!isGameActive) return;
 
             const { width, height } = this.scale;
@@ -1710,17 +1943,19 @@
                 const speedFactor = 1 / Math.sqrt(densityRatio);
 
                 // Apply speed factor to swing time
-                swingTime += delta * (craneSpeed * speedFactor * 0.0005);
+                const adjustedSpeedFactor = Math.max(speedFactor, 0.55); // clamp minimum so heavy boxes don't crawl
+                swingTime += delta * (craneSpeed * adjustedSpeedFactor * 0.0005);
 
-                const ropeLength = 250; // Longer rope since it starts from top
+                const ropeLength = 230; // Slightly shorter to tighten attach
                 const maxSwingAngle = 0.6; // Reduced from 1.0 to be less wide
                 const angle = Math.sin(swingTime) * maxSwingAngle;
 
                 const ropeEndX = crane.x + Math.sin(angle) * ropeLength;
                 const ropeEndY = crane.y + Math.cos(angle) * ropeLength;
 
-                const boxX = ropeEndX + Math.sin(angle) * 64;
-                const boxY = ropeEndY + Math.cos(angle) * 64;
+                const halfH = currentBox.displayHeight ? currentBox.displayHeight / 2 : 64;
+                const boxX = ropeEndX;
+                const boxY = ropeEndY + halfH;
 
                 currentBox.setPosition(boxX, boxY);
                 currentBox.setRotation(0); // NO ROTATION on crane
@@ -1729,7 +1964,7 @@
                 // Theta = sin(swingTime) * maxSwingAngle
                 // dTheta/dt = cos(swingTime) * maxSwingAngle * speedFactor
                 // Note: speedFactor here refers to the angular speed multiplier (craneSpeed * speedFactor * 0.0005)
-                const angularSpeed = craneSpeed * speedFactor * 0.0005;
+                const angularSpeed = craneSpeed * adjustedSpeedFactor * 0.0005;
                 const dThetaDt = Math.cos(swingTime) * maxSwingAngle * angularSpeed; // rad/ms
 
                 // Vx = L * cos(Theta) * dTheta/dt
@@ -1801,7 +2036,21 @@
                 } else if (spriteCategory === 'iceRect') {
                     spriteList = availableSprites.iceRect;
                 } else {
-                    spriteList = availableSprites.normal;
+                    // Normal boxes: use rect sprites when id hints rectangle
+                    if (selectedType.id && selectedType.id.includes('rect') && availableSprites.normalRect.length > 0) {
+                        spriteList = availableSprites.normalRect;
+                    } else {
+                        spriteList = availableSprites.normal;
+                    }
+                }
+            }
+            if (spriteCategory === 'normal') {
+                const isRect = selectedType.id && selectedType.id.includes('rect');
+                if (isRect && availableSprites.normalRect.length > 0) {
+                    spriteList = availableSprites.normalRect;
+                } else {
+                    // remove any goal/heavy textures if leaked
+                    spriteList = spriteList.filter(key => !key.includes('goal') && !key.includes('heavy'));
                 }
             }
 
@@ -1967,6 +2216,8 @@
         function startGame() {
             // console.log('Starting Game...');
             document.getElementById('game-over-screen').classList.add('hidden');
+            const gc = document.getElementById('game-container');
+            if (gc) gc.style.opacity = '1';
 
             // Show Debug Button
             const debugBtn = document.getElementById('debug-btn');
@@ -1974,7 +2225,7 @@
 
             isGameActive = true;
             score = 0;
-            lives = 3; // Reset lives
+            lives = 3; // Reset lives (ignored when god mode)
             currentGameMinY = null; // Reset current game tracking
             updateLivesUI();
             craneSpeed = gameConfig.baseSpeed;
@@ -2171,6 +2422,12 @@
         function gameOver() {
             isGameActive = false;
             if (game) {
+                // Show sad face immediately
+                if (mascotFace) {
+                    mascotFace.setTexture('mascot_sad');
+                }
+                const gc = document.getElementById('game-container');
+                if (gc) gc.style.opacity = '0';
                 game.scene.pause('default');
 
                 // Update Session Record if current game beat it
@@ -2252,6 +2509,7 @@
         }
 
         function handleLifeLoss(scene, box) {
+            const infiniteLives = godMode;
             // Prevent multiple triggers for the same box
             if (box.hasCausedDamage) return;
             box.hasCausedDamage = true;
@@ -2293,8 +2551,23 @@
                 }, 1000);
             }
 
-            lives--;
-            updateLivesUI();
+            if (!infiniteLives) {
+                lives--;
+                updateLivesUI();
+            }
+
+            // Check for game over before continuing
+            if (!infiniteLives && lives <= 0) {
+                // Clean up the fallen box before ending the game
+                if (box) {
+                    const index = boxes.indexOf(box);
+                    if (index > -1) boxes.splice(index, 1);
+                    scene.matter.world.remove(box);
+                    box.destroy();
+                }
+                gameOver();
+                return;
+            }
 
             // Destroy the box
             if (box) {
@@ -2332,95 +2605,105 @@
             if (!recordLine) return;
             recordLine.clear();
             if (sessionBestY !== null) {
-                recordLine.lineStyle(2, 0x00ffff, 0.5); // Cyan, semi-transparent
-                // Draw dashed line
-                const dash = 10;
+                const dash = 14;
                 const gap = 10;
                 const y = sessionBestY;
+                // Shadow
+                recordLine.lineStyle(6, 0x000000, 0.35);
+                for (let x = 0; x < scene.scale.width; x += dash + gap) {
+                    recordLine.moveTo(x, y + 1);
+                    recordLine.lineTo(x + dash, y + 1);
+                }
+                recordLine.strokePath();
+                // Main line
+                recordLine.lineStyle(2, 0x00ffff, 0.9);
                 for (let x = 0; x < scene.scale.width; x += dash + gap) {
                     recordLine.moveTo(x, y);
                     recordLine.lineTo(x + dash, y);
                 }
                 recordLine.strokePath();
 
-                // Add "RECORD" text if not exists?
-                // For now just the line.
+                const cam = scene.cameras.main;
+                const screenY = y - cam.scrollY;
+                if (!recordLineLabel) {
+                    recordLineLabel = scene.add.text(scene.scale.width - 70, screenY - 12, 'VOCÊ', {
+                        fontFamily: '"Press Start 2P"',
+                        fontSize: '10px',
+                        color: '#000',
+                        backgroundColor: '#00ffff',
+                        padding: { x: 6, y: 4 }
+                    });
+                    recordLineLabel.setDepth(1000);
+                    recordLineLabel.setScrollFactor(0);
+                } else {
+                    recordLineLabel.setPosition(scene.scale.width - 70, screenY - 12);
+                }
             }
-        }
 
-        function createPerfectDropEffect(scene, x, y, boxWidth = 100) {
-            // "Fusion Seal" Animation - REFINED
-            // Occurs 200ms after landing
-
-            // 1. "PERFECT!" Text (Screen Space - Fixed Position)
-            // Position: Right side of screen, vertically centered
-            const screenWidth = scene.scale.width;
-            const screenHeight = scene.scale.height;
-
-            const textX = screenWidth - 150; // Fixed on right side
-            const textY = screenHeight / 2;  // Vertically centered
-
-            const text = scene.add.text(textX, textY, 'PERFECT!\n+3', {
-                fontFamily: '"Press Start 2P"',
-                fontSize: '32px', // Larger font
-                color: '#ffff00',
-                stroke: '#000000',
-                strokeThickness: 6,
-                align: 'center'
-            });
-            text.setOrigin(0.5);
-            text.setScrollFactor(0); // Fix to camera (Screen Space)
-            text.setDepth(2000); // Very high depth
-            text.setScale(0);
-
-            // Animate Text (Pop in and out)
-            scene.tweens.add({
-                targets: text,
-                scaleX: 1,
-                scaleY: 1,
-                duration: 300,
-                ease: 'Back.out',
-                onComplete: () => {
-                    scene.tweens.add({
-                        targets: text,
-                        alpha: 0,
-                        scaleX: 1.2, // Pulse out
-                        scaleY: 1.2,
-                        duration: 500,
-                        delay: 500,
-                        onComplete: () => {
-                            text.destroy();
-                        }
+            // Ranking lines (other players)
+            if (rankingLines.length === 0 && rankingHeights.length > 0) {
+                rankingHeights.forEach((y, idx) => {
+                    rankingLines.push({
+                        y,
+                        idx,
+                        gfx: scene.add.graphics(),
+                        label: scene.add.text(scene.scale.width - 80, 0, `TOP ${idx + 1}`, {
+                            fontFamily: '"Press Start 2P"',
+                            fontSize: '9px',
+                            color: '#000',
+                            backgroundColor: '#ffde59',
+                            padding: { x: 4, y: 3 }
+                        }).setDepth(900).setScrollFactor(0),
+                        passed: false
                     });
-                }
-            });
-            target.fillCircle(x, y, 5); // Inner dot
+                });
+            }
 
-            target.setScale(2);
-            target.setAlpha(0);
-
-            scene.tweens.add({
-                targets: target,
-                scaleX: 1,
-                scaleY: 1,
-                alpha: 1,
-                duration: 200,
-                ease: 'Cubic.out',
-                onComplete: () => {
-                    scene.tweens.add({
-                        targets: target,
-                        scaleX: 0.5,
-                        scaleY: 0.5,
-                        alpha: 0,
-                        duration: 200,
-                        delay: 100,
-                        onComplete: () => {
-                            target.destroy();
-                        }
-                    });
+            rankingLines.forEach(line => {
+                const g = line.gfx;
+                g.clear();
+                const dash = 10;
+                const gap = 8;
+                const y = line.y;
+                // Shadow
+                g.lineStyle(5, 0x000000, 0.25);
+                for (let x = 0; x < scene.scale.width; x += dash + gap) {
+                    g.moveTo(x, y + 1);
+                    g.lineTo(x + dash, y + 1);
                 }
-            });
-        }
+                g.strokePath();
+                // Main line
+                g.lineStyle(2, 0xffde59, 0.9);
+                for (let x = 0; x < scene.scale.width; x += dash + gap) {
+                    g.moveTo(x, y);
+                    g.lineTo(x + dash, y);
+                }
+                g.strokePath();
+
+                const cam = scene.cameras.main;
+                const screenY = y - cam.scrollY;
+                    line.label.setPosition(scene.scale.width - 80, screenY - 10);
+
+                // Pass notification
+                if (!line.passed && currentGameMinY !== null && currentGameMinY < y) {
+                    line.passed = true;
+                    const ping = scene.add.text(scene.scale.width / 2, screenY - 20, `PASSOU TOP${line.idx + 1}!`, {
+                        fontFamily: '"Press Start 2P"',
+                        fontSize: '12px',
+                        color: '#ffffff',
+                        backgroundColor: '#00aa55',
+                        padding: { x: 6, y: 4 }
+                }).setDepth(1200).setScrollFactor(0);
+                scene.tweens.add({
+                    targets: ping,
+                    alpha: 0,
+                    y: screenY - 50,
+                    duration: 800,
+                    onComplete: () => ping.destroy()
+                });
+            }
+        });
+    }
 
         document.addEventListener('keydown', (e) => {
             const gameOverScreen = document.getElementById('game-over-screen');
@@ -2704,9 +2987,10 @@
 
     <!-- Game Over Screen - Placed at end for proper z-index stacking -->
     <div id="game-over-screen" class="hidden"
-        style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; background: rgba(0, 0, 0, 0.7); justify-content: center; align-items: center; z-index: 10000 !important;">
+        style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; background: none; justify-content: center; align-items: center; z-index: 10000 !important;">
         <!-- Content Wrapper (Above Falling Boxes) -->
-        <div class="game-over-content">
+        <div class="game-over-content"
+            style="background: none; border: none; box-shadow: none; padding: 0; margin-top: 60px;">
             <!-- Group 1: Image -->
             <div style="display: flex; gap: 20px; align-items: center; justify-content: center; margin-bottom: 48px;">
                 <img src="assets/game_over/game_text.png" alt="GAME"
@@ -2737,29 +3021,23 @@
 
                 <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
                     <button class="pixel-btn" id="save-score-btn"
-                        style="width: 100%; font-size: 16px; background: linear-gradient(180deg, #0099ff, #0066cc); border: 4px solid #003366; color: #fff; box-shadow: 4px 4px 0px #000;">SALVAR</button>
+                        style="width: 100%; font-size: 16px; background: #fff; border: 4px solid #fff; color: #000; box-shadow: 4px 4px 0px #000;">SALVAR</button>
                     <button class="pixel-btn" id="ranking-btn"
-                        style="width: 100%; font-size: 16px; background: transparent; border: 4px solid #fff; color: #fff; box-shadow: 4px 4px 0px #000; padding: 15px;">RANKING</button>
+                        style="width: 100%; font-size: 16px; background: #fff; border: 4px solid #fff; color: #000; box-shadow: 4px 4px 0px #000; padding: 15px;">RANKING</button>
                 </div>
             </div>
 
             <!-- Group 4: Buttons -->
             <div style="display: flex; flex-direction: column; gap: 15px; width: 100%;">
                 <button class="pixel-btn" id="restart-btn"
-                    style="width: 100%; font-size: 16px; background: transparent; border: 4px solid #fff; color: #fff; box-shadow: 4px 4px 0px #000;">TENTAR
+                    style="width: 100%; font-size: 16px; background: #fff; border: 4px solid #fff; color: #000; box-shadow: 4px 4px 0px #000;">TENTAR
                     DE NOVO</button>
                 <button class="pixel-btn" onclick="window.location.href='index.html'"
-                    style="width: 100%; font-size: 16px; background: transparent; border: 4px solid #fff; color: #fff; box-shadow: 4px 4px 0px #000;">SAIR
+                    style="width: 100%; font-size: 16px; background: #fff; border: 4px solid #fff; color: #000; box-shadow: 4px 4px 0px #000;">SAIR
                     <span class="shortcut-key">[ESC]</span></button>
             </div>
         </div>
     </div>
-
-    <!-- Debug Button (Visible only during game) -->
-    <button id="debug-btn" class="hidden"
-        style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(0,0,0,0.7); border: 2px solid #00ffff; color: #00ffff; padding: 10px 15px; cursor: pointer; border-radius: 5px; font-family: 'Press Start 2P'; font-size: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.5);">
-        CONFIG
-    </button>
 
     <!-- Debug Sidebar -->
     <div id="debug-sidebar"
@@ -3037,11 +3315,8 @@
                 game.scale.resize(width, height);
 
                 // Update background size if needed
-                if (game.scene.scenes[0] && game.scene.scenes[0].background) {
-                    const bg = game.scene.scenes[0].background;
-                    bg.setSize(width, height);
-                    const bgScale = Math.max(width / 1440, 1);
-                    bg.setTileScale(bgScale, bgScale);
+                if (game.scene.scenes[0]) {
+                    updateBackgroundGradient(game.scene.scenes[0], true);
                 }
 
                 // Update Mascot Visibility & Position
