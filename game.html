@@ -1469,7 +1469,11 @@
                 console.log("Valid heights found:", validHeights);
 
                 if (validHeights.length > 0) {
-                    rankingHeights = validHeights.slice(0, 3);
+                    const mapHeight = (val) => {
+                        const targetScene = scene || getActiveScene();
+                        return bestHeightToY(targetScene, val);
+                    };
+                    rankingHeights = validHeights.slice(0, 3).map(mapHeight);
                     rankingTopNames = entries.slice(0, 3);
                     console.log("Ranking lines updated:", rankingHeights);
                 } else {
@@ -1488,6 +1492,25 @@
                 console.warn('Could not load ranking from Firebase:', e.message);
                 // Don't throw - let the game continue without ranking lines
             }
+        }
+
+        // Convert stored "height" to a world Y and clamp to the visible area.
+        function bestHeightToY(scene, value) {
+            if (!scene || !Number.isFinite(value)) return null;
+            const h = scene.scale.height;
+            const base = h - 80; // near platform
+            let y = value;
+
+            // If the value is huge (likely a stack height), invert from base.
+            if (value > h * 2 || value < -h * 2) {
+                y = base - value;
+            }
+
+            // Clamp to visible window
+            const minY = 40;
+            const maxY = h - 60;
+            y = Math.min(maxY, Math.max(minY, y));
+            return y;
         }
 
         function initGame() {
@@ -1782,6 +1805,8 @@
             // Mark scene as ready
             isSceneReady = true;
             console.log('Scene Create Complete. isSceneReady = true');
+            // Refresh ranking lines with scene context (ensures top lines appear)
+            refreshRankingHeightsFromRemote(this).catch(() => {});
             // Owl Frame Removed
 
             // Update Restart Button Text
@@ -1939,6 +1964,7 @@
 
             // Initialize Record Line
             recordLine = this.add.graphics();
+            recordLine.setDepth(800);
             updateRecordLine(this);
 
             isSceneReady = true;
@@ -2283,8 +2309,8 @@
             fallingBox = currentBox;
             currentBox = null;
 
-            // Spawn next box after delay
-            scene.time.delayedCall(1000, () => {
+            // Spawn next box after a brief delay to keep pacing/camera consistent
+            scene.time.delayedCall(900, () => {
                 if (isGameActive) spawnBox(scene);
             });
         }
@@ -2790,7 +2816,7 @@
                         color: '#888888', // Gray text
                         backgroundColor: '#ffffff', // White background
                         padding: { x: 6, y: 4 }
-                    });
+                    }).setDepth(800);
                     recordLineLabel.setDepth(1000);
                     recordLineLabel.setScrollFactor(0);
                 } else {
@@ -2819,8 +2845,9 @@
                 const minSpacing = 80;
                 const adjustedHeights = [];
 
-                rankingHeights.slice(0, desiredLines).forEach((y, idx) => {
-                    let adjustedY = y;
+                rankingHeights.slice(0, desiredLines).forEach((rawY, idx) => {
+                    let adjustedY = bestHeightToY(scene, rawY);
+                    if (adjustedY === null) adjustedY = scene.scale.height - 80;
 
                     // Check if this line is too close to previous lines
                     for (let i = 0; i < adjustedHeights.length; i++) {
@@ -2839,7 +2866,7 @@
                     rankingLines.push({
                         y: adjustedY,
                         idx,
-                        gfx: scene.add.graphics(),
+                        gfx: scene.add.graphics().setDepth(800),
                         bgColor, // Store for line drawing
                         // CHANGED TO LEFT SIDE (10px)
                         label: scene.add.text(10, 0, `TOP ${idx + 1} - ${playerName}`, {
@@ -2855,7 +2882,9 @@
             }
 
             rankingLines.forEach(line => {
-                line.y = typeof rankingHeights[line.idx] === 'number' ? rankingHeights[line.idx] : line.y;
+                const rawY = rankingHeights[line.idx];
+                const mapped = bestHeightToY(scene, rawY);
+                line.y = Number.isFinite(mapped) ? mapped : line.y;
                 const g = line.gfx;
                 g.clear();
                 const dash = 6;
