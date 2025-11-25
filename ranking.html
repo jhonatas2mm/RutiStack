@@ -304,22 +304,11 @@
                     rankingList.appendChild(item);
                     position++;
 
-                    // Save bestHeight (actual Y position) for game reference lines
-                    const heightValue = data.bestHeight !== undefined ? Number(data.bestHeight) : NaN;
-                    const scoreValue = data.score !== undefined ? Number(data.score) : 0;
-                    if (Number.isFinite(heightValue)) {
-                        topHeights.push(heightValue);
-                        topNames.push({ name: pName, bestHeight: heightValue, score: scoreValue });
-                    }
+                    // Data is used by game.html which loads directly from Firebase
+                    // No need to save to localStorage anymore
                 });
 
-                if (topHeights.length > 0) {
-                    localStorage.setItem('rankingBestHeights', JSON.stringify(topHeights.slice(0, 3)));
-                }
-                if (topNames.length > 0) {
-                    localStorage.setItem('rankingTopNames', JSON.stringify(topNames.slice(0, 3)));
-                }
-
+                // No longer saving to localStorage - game.html loads fresh from Firebase
             } catch (error) {
                 console.error('Erro ao carregar ranking:', error);
                 rankingList.innerHTML = '<div class="empty-state">Erro ao carregar ranking.<br>Tente novamente mais tarde.</div>';

@@ -977,25 +977,15 @@
 
         let isDropping = false; // Flag to prevent double drops
 
-        // Fetch Remote Config
-        // Fetch Remote Config
+        // Load Game Config from Firebase (Anti-Cheat: prevents local modification)
         async function loadGameConfig() {
-            // 1. Load Local (Fallback/Cache)
-            const localConfig = localStorage.getItem('gameConfig');
-            if (localConfig) {
-                gameConfig = { ...gameConfig, ...JSON.parse(localConfig) };
-                console.log("Local config loaded (cache):", gameConfig);
+            if (!isFirebaseReady) {
+                console.warn('Firebase not ready - using default game config');
+                return;
             }
-            const localBoxTypes = localStorage.getItem('boxTypes');
-            if (localBoxTypes) {
-                // boxTypes = JSON.parse(localBoxTypes);
-                // console.log("Local box types loaded (cache):", boxTypes);
-            }
-
-            if (!isFirebaseReady) return;
 
             try {
-                // 2. Load Global Config from Firestore
+                // Load Global Config from Firestore
                 const configRef = doc(db, "settings", "gameConfig");
                 const configSnap = await getDoc(configRef);
 
@@ -1003,23 +993,21 @@
                     const data = configSnap.data();
                     gameConfig = { ...gameConfig, ...data };
                     console.log("Remote config loaded:", gameConfig);
-                    localStorage.setItem('gameConfig', JSON.stringify(gameConfig));
                 } else {
                     // Create default if not exists
                     await setDoc(configRef, gameConfig);
                     console.log("Remote config created with defaults.");
                 }
 
-                // 3. Load Box Types from Firestore
+                // Load Box Types from Firestore
                 const boxesRef = doc(db, "settings", "boxTypes");
                 const boxesSnap = await getDoc(boxesRef);
 
                 if (boxesSnap.exists()) {
                     const data = boxesSnap.data();
                     if (data.types) {
-                        // boxTypes = data.types;
-                        // console.log("Remote box types loaded:", boxTypes);
-                        // localStorage.setItem('boxTypes', JSON.stringify(boxTypes));
+                        // Can be used if needed in the future
+                        console.log("Remote box types available");
                     }
                 } else {
                     // Create default
@@ -1028,39 +1016,11 @@
                 }
 
             } catch (e) {
-                console.error("Remote config error:", e);
+                console.warn("Could not load game config from Firebase:", e.message);
+                // Continue with default config
             }
         }
 
-
-        // Load Custom Sprites from Firestore (cached in localStorage)
-        async function loadCustomSprites() {
-            if (!isFirebaseReady) {
-                console.log("Firebase offline - using cached sprites from localStorage");
-                return;
-            }
-
-            try {
-                for (const boxType of ['normal', 'goal']) {
-                    const spritesRef = doc(db, "sprites", boxType);
-                    const spritesSnap = await getDoc(spritesRef);
-
-                    if (spritesSnap.exists()) {
-                        const data = spritesSnap.data();
-                        const spriteUrls = data.urls || data.sprites || [];
-
-                        if (spriteUrls.length > 0) {
-                            localStorage.setItem(`sprites_${boxType}`, JSON.stringify(spriteUrls));
-                            console.log(`Loaded ${spriteUrls.length} sprite URLs from Firestore for ${boxType}`);
-                        }
-                    } else {
-                        console.log(`No remote sprites found for ${boxType}`);
-                    }
-                }
-            } catch (e) {
-                console.error("Error loading sprites from Firestore:", e);
-            }
-        }
 
 
         // --- PHASER GAME ---
@@ -1201,11 +1161,11 @@
                 category: 'ice',
                 name: 'Gelo Quadrada',
                 chance: 3, // Reduced chance (was 5)
-                textures: ['ice_1', 'ice_2', 'ice_3'],
+                textures: ['ice_1'],
                 width: 143,
                 height: 143,
                 densityRange: [0.11, 0.13], // heavier to fall faster
-                friction: 0.16, // less sliding
+                friction: 0.22, // increased to reduce sliding (was 0.16)
                 bounce: 0.02,
                 variations: 1,
                 sizeIncrement: 0
@@ -1215,11 +1175,11 @@
                 category: 'iceRect',
                 name: 'Gelo Retangular',
                 chance: 3, // Reduced chance (was 5)
-                textures: ['ice_rect_1', 'ice_rect_2', 'ice_rect_3'],
+                textures: ['ice_rect_2'],
                 width: 172,
                 height: 98,
                 densityRange: [0.11, 0.13], // heavier to fall faster
-                friction: 0.16, // less sliding
+                friction: 0.22, // increased to reduce sliding (was 0.16)
                 bounce: 0.02,
                 variations: 1,
                 sizeIncrement: 0
@@ -1468,15 +1428,30 @@
         }
 
         async function refreshRankingHeightsFromRemote(scene = null) {
-            if (!isFirebaseReady) return;
+            if (!isFirebaseReady) {
+                console.warn('Firebase not ready, skipping ranking data load');
+                return;
+            }
+
             try {
+                console.log("Fetching ranking from Firebase...");
                 const scoresRef = collection(db, 'scores');
+                // Order by bestHeight ASCENDING (smaller Y is higher up) - wait, Y increases downwards in Phaser?
+                // Actually, in this game, boxes stack UP, so Y decreases.
+                // But 'bestHeight' was saved as the Y position. Lower Y = Higher Stack.
+                // So we want the SMALLEST bestHeight (highest stack).
+                // Let's check how it's saved.
+
+                // Query: Get top scores (highest score first)
+                // We want to show lines for the best players.
+                // Usually ranking is by Score.
                 const q = query(scoresRef, orderBy('score', 'desc'), limit(10));
                 const snap = await getDocs(q);
                 const entries = [];
 
                 snap.forEach(docSnap => {
                     const data = docSnap.data();
+                    console.log("Rank entry:", data);
                     const bestHeight = data.bestHeight !== undefined ? Number(data.bestHeight) : NaN;
                     const playerScore = data.score !== undefined ? Number(data.score) : 0;
                     entries.push({
@@ -1488,17 +1463,19 @@
 
                 // Use actual bestHeight (Y position) from database
                 const validHeights = entries
-                    .map(e => e.bestHeight)
-                    .filter(v => Number.isFinite(v));
+                    .filter(e => Number.isFinite(e.bestHeight)) // Allow negative heights (Phaser Y goes up)
+                    .map(e => e.bestHeight);
+
+                console.log("Valid heights found:", validHeights);
 
                 if (validHeights.length > 0) {
                     rankingHeights = validHeights.slice(0, 3);
-                    localStorage.setItem('rankingBestHeights', JSON.stringify(rankingHeights));
-                }
-
-                if (entries.length > 0) {
                     rankingTopNames = entries.slice(0, 3);
-                    localStorage.setItem('rankingTopNames', JSON.stringify(rankingTopNames));
+                    console.log("Ranking lines updated:", rankingHeights);
+                } else {
+                    console.log("No valid ranking heights found.");
+                    rankingHeights = [];
+                    rankingTopNames = [];
                 }
 
                 // Force rebuild of lines on next frame
@@ -1508,7 +1485,8 @@
                 });
                 rankingLines = [];
             } catch (e) {
-                console.error('Erro ao carregar alturas do ranking:', e);
+                console.warn('Could not load ranking from Firebase:', e.message);
+                // Don't throw - let the game continue without ranking lines
             }
         }
 
@@ -1528,21 +1506,10 @@
             this.load.crossOrigin = 'anonymous'; // Fix CORS for Firebase Storage
             const graphics = this.make.graphics({ x: 0, y: 0, add: false });
 
-            // Load ranking heights (optional, from localStorage)
-            try {
-                rankingHeights = JSON.parse(localStorage.getItem('rankingBestHeights') || '[]')
-                    .map(v => Number(v))
-                    .filter(v => Number.isFinite(v));
-            } catch (e) {
-                rankingHeights = [];
-            }
-
-            try {
-                rankingTopNames = JSON.parse(localStorage.getItem('rankingTopNames') || '[]')
-                    .filter(entry => entry && typeof entry.name === 'string');
-            } catch (e) {
-                rankingTopNames = [];
-            }
+            // Ranking heights will be loaded from Firebase in create()
+            // No need to read from localStorage here (prevents stale data)
+            rankingHeights = [];
+            rankingTopNames = [];
 
             // God button listener (set up once DOM is ready)
             const godBtn = document.getElementById('god-btn');
@@ -1565,8 +1532,9 @@
                 });
             }
 
-            // Box Textures (Local Assets - Blind Load 1-20)
-            for (let i = 1; i <= 20; i++) {
+            // Box Textures (Local Assets - Load only existing files)
+            // Normal sprites: only 11 available (0-11)
+            for (let i = 1; i <= 11; i++) {
                 this.load.image(`normal_${i}`, `assets/sprites/normal/${i}.png`);
             }
             const goalSprites = ['goal_square', 'goal_rect'];
@@ -1574,14 +1542,15 @@
                 this.load.image(key, `assets/sprites/heavy/${key}.png`);
             });
 
-            for (let i = 1; i <= 10; i++) {
+            // Retangulo sprites (1-9) – only these exist
+            for (let i = 1; i <= 9; i++) {
                 this.load.image(`retangulo_${i}`, `assets/sprites/retangulo/${i}.png`);
             }
 
-            for (let i = 1; i <= 10; i++) {
-                this.load.image(`ice_${i}`, `assets/sprites/ice/${i}.png`);
-                this.load.image(`ice_rect_${i}`, `assets/sprites/ice_retangulo/${i}.png`);
-            }
+            // Ice sprites – only ice/1.png exists, ice_retangulo/2.png exists
+            this.load.image('ice_1', 'assets/sprites/ice/1.png');
+            this.load.image('ice_rect_2', 'assets/sprites/ice_retangulo/2.png');
+
 
             // --- AUDIO ASSETS ---
             this.load.audio('music_bg', 'assets/audio/music_bg.mp3');
@@ -1681,7 +1650,7 @@
             this.load.image('lever_pull', 'assets/mascot/alavanca puxada.png');
             // Load custom uploaded sprites from localStorage
             // Load custom uploaded sprites from localStorage using Phaser Loader
-            // DISABLED TEMPORARILY TO FIX CORS/GAME BUGS
+            // Disabled to avoid CORS/permission errors
             /*
             boxTypes.forEach(type => {
                 const customSprites = JSON.parse(localStorage.getItem(`sprites_${type.id}`) || '[]');
@@ -1694,52 +1663,59 @@
             */
         }
 
-        function create() {
+        async function create() {
             const { width, height } = this.scale;
             // Ensure Phaser sound respects persisted mute state
             applyMuteState(isMuted, this);
 
-            // DETECT AVAILABLE SPRITES
-            // Check which textures actually loaded successfully
+            // Detect available sprites (after preload)
             availableSprites.normal = [];
-            availableSprites.normalRect = []; // Added normalRect
+            availableSprites.normalRect = [];
             availableSprites.goal = [];
+            availableSprites.goalRect = [];
+            availableSprites.ice = [];
+            availableSprites.iceRect = [];
 
-            for (let i = 1; i <= 20; i++) {
+            // Normal sprites (1‑11)
+            for (let i = 1; i <= 11; i++) {
                 if (this.textures.exists(`normal_${i}`)) {
                     availableSprites.normal.push(`normal_${i}`);
                 }
             }
-            for (let i = 1; i <= 10; i++) {
+            // Retangulo sprites (1‑9)
+            for (let i = 1; i <= 9; i++) {
                 if (this.textures.exists(`retangulo_${i}`)) {
                     availableSprites.normalRect.push(`retangulo_${i}`);
                 }
             }
-
+            // Goal sprites
             const goalTextureKeys = ['goal_square', 'goal_rect'];
             goalTextureKeys.forEach(key => {
                 if (this.textures.exists(key)) {
                     availableSprites.goal.push(key);
                 }
             });
-
-            availableSprites.goalRect = [];
+            // Goal rect fallback (already covered by goalTextureKeys)
             if (this.textures.exists('goal_rect')) {
                 availableSprites.goalRect.push('goal_rect');
             }
-
-            availableSprites.ice = [];
-            availableSprites.iceRect = [];
-            for (let i = 1; i <= 10; i++) {
-                const iceKey = `ice_${i}`;
-                if (this.textures.exists(iceKey)) {
-                    availableSprites.ice.push(iceKey);
-                }
-                const iceRectKey = `ice_rect_${i}`;
-                if (this.textures.exists(iceRectKey)) {
-                    availableSprites.iceRect.push(iceRectKey);
-                }
+            // Ice sprites
+            if (this.textures.exists('ice_1')) {
+                availableSprites.ice.push('ice_1');
             }
+            // Ice rect sprite (only ice_rect_2 exists)
+            if (this.textures.exists('ice_rect_2')) {
+                availableSprites.iceRect.push('ice_rect_2');
+            }
+            // Ensure fallback exists for iceRect if empty
+            if (availableSprites.iceRect.length === 0) {
+                const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+                graphics.fillStyle(0x99d9ff);
+                graphics.fillRect(0, 0, 172, 98);
+                graphics.generateTexture('ice_rect_fallback', 172, 98);
+                availableSprites.iceRect.push('ice_rect_fallback');
+            }
+
             console.log("Available Sprites Detected:", availableSprites);
 
             // Fallback if no sprites loaded (prevent crash)
@@ -1772,13 +1748,7 @@
                 graphics.generateTexture('ice_fallback', 128, 128);
                 availableSprites.ice.push('ice_fallback');
             }
-            if (availableSprites.iceRect.length === 0) {
-                const graphics = this.make.graphics({ x: 0, y: 0, add: false });
-                graphics.fillStyle(0x99d9ff);
-                graphics.fillRect(0, 0, 172, 98);
-                graphics.generateTexture('ice_rect_fallback', 172, 98);
-                availableSprites.iceRect.push('ice_rect_fallback');
-            }
+
 
             // ... (rest of create) ...
             // ... (skip to spawnBox) ...
@@ -1897,12 +1867,6 @@
 
                     [bodyA, bodyB].forEach(body => {
                         if (body.gameObject && boxes.includes(body.gameObject) && !body.isStatic) {
-                            // Heavy/Goal Box Impact Animation
-                            if ((body.gameObject.boxCategory === 'goal' || body.gameObject.boxCategory === 'goalRect') && !body.gameObject.hasImpacted) {
-                                body.gameObject.hasImpacted = true;
-                                // Shake camera: duration 200ms, intensity 0.005
-                                this.cameras.main.shake(200, 0.005);
-                            }
                             // Play sound immediately on collision
                             if (!body.gameObject.hasPlayedSound) {
                                 body.gameObject.hasPlayedSound = true;
@@ -1915,6 +1879,14 @@
                                     playSound(this, 'sfx_land', { volume: 0.6, detune: Phaser.Math.Between(-200, 200) });
                                 }
                             }
+
+                            // Heavy/Goal Box Impact Animation (Shake Camera)
+                            if ((body.gameObject.boxCategory === 'goal' || body.gameObject.boxCategory === 'goalRect') && !body.gameObject.hasImpacted) {
+                                body.gameObject.hasImpacted = true;
+                                // Shake camera: duration 200ms, intensity 0.005
+                                this.cameras.main.shake(200, 0.005);
+                            }
+
 
                             // Freeze box after collision (prevent bouncing/sliding)
                             // Body starts freezing after 1 second of low velocity
@@ -1972,16 +1944,10 @@
             isSceneReady = true;
             updateSoundUI();
 
-            // Sync ranking markers with latest data
-            refreshRankingHeightsFromRemote(this);
+            // Ranking data is already loaded in window.onload
+            // No need to load again here or pause the scene
 
-            // Hide loading screen
-            const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) {
-                loadingScreen.style.display = 'none';
-            }
-
-            this.scene.pause();
+            console.log('Scene Create Complete. Game loop running.');
         }
 
         function update(time, delta) {
@@ -2975,20 +2941,45 @@
             // Retrieve player name from localStorage or default
             playerName = localStorage.getItem('playerName') || 'JOG';
 
-            try {
-                // Load sprites from Firestore
-                await loadCustomSprites();
-
-                // Timeout for config load to prevent hanging
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000));
-                await Promise.race([loadGameConfig(), timeoutPromise]);
-            } catch (e) {
-                console.warn('Config load skipped or failed:', e);
+            // Load game config from Firebase (Anti‑Cheat)
+            if (isFirebaseReady) {
+                try {
+                    const configTimeout = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Config load timeout')), 2000)
+                    );
+                    await Promise.race([loadGameConfig(), configTimeout]);
+                } catch (e) {
+                    console.warn('Game config load failed, using defaults:', e.message);
+                }
+            } else {
+                console.warn('Firebase not ready – using default game config');
             }
+
+            // Load ranking data from Firebase (Anti‑Cheat) after config
+            if (isFirebaseReady) {
+                try {
+                    const rankTimeout = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Ranking load timeout')), 3000)
+                    );
+                    await Promise.race([refreshRankingHeightsFromRemote(null), rankTimeout]);
+                } catch (e) {
+                    console.warn('Ranking load failed, continuing without TOP lines:', e.message);
+                    rankingHeights = [];
+                    rankingTopNames = [];
+                }
+            } else {
+                console.warn('Firebase not ready – skipping ranking load');
+            }
+
 
             // Ensure game variable is initialized if not already
             if (typeof game === 'undefined' || !game) {
                 initGame();
+                // Hide loading screen now that game is initialized
+                const loadingScreen = document.getElementById('loading-screen');
+                if (loadingScreen) {
+                    loadingScreen.style.display = 'none';
+                }
                 // Wait for game AND scene to be ready before starting
                 const checkGameReady = setInterval(() => {
                     if (game && isSceneReady) {
@@ -3000,6 +2991,11 @@
             } else {
                 // console.log('Game already initialized, calling startGame...');
                 startGame();
+                // Hide loading screen (in case it wasn't hidden yet)
+                const loadingScreen = document.getElementById('loading-screen');
+                if (loadingScreen) {
+                    loadingScreen.style.display = 'none';
+                }
             }
         };
 
@@ -3125,6 +3121,7 @@
 
             // Success feedback and clear inputs
             saveBtn.innerText = "SALVO!";
+            saveBtn.style.backgroundColor = "#44ff44";
             // Clear nickname inputs
             for (let i = 1; i <= 8; i++) {
                 const input = document.getElementById(`char${i}`);
