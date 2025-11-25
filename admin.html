@@ -357,11 +357,92 @@
             text-align: center;
             padding: 30px;
         }
+
+        /* Login Modal */
+        #login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--gb-bg);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .login-box {
+            background: var(--gb-darkest);
+            border: 4px solid var(--gb-lightest);
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .login-title {
+            color: var(--gb-lightest);
+            font-size: 24px;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            background: #000;
+            border: 2px solid var(--gb-lightest);
+            color: #fff;
+            font-family: 'Press Start 2P';
+            font-size: 16px;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: var(--gb-lightest);
+            color: var(--gb-darkest);
+            border: none;
+            font-family: 'Press Start 2P';
+            font-size: 16px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: transform 0.1s;
+        }
+
+        .login-btn:active {
+            transform: scale(0.98);
+        }
+
+        .error-msg {
+            color: #ff4444;
+            font-size: 12px;
+            margin-top: 15px;
+            min-height: 15px;
+            display: none;
+        }
     </style>
 </head>
 
 <body>
-    <div id="admin-panel">
+    <!-- Login Modal -->
+    <div id="login-modal">
+        <div class="login-box">
+            <div class="login-title">Acesso Restrito</div>
+            <input type="password" id="admin-pass" class="login-input" placeholder="SENHA"
+                onkeyup="if(event.key==='Enter') login()">
+            <button class="login-btn" onclick="login()">Entrar</button>
+            <div id="login-error" class="error-msg">SENHA INCORRETA</div>
+        </div>
+    </div>
+
+    <div id="admin-panel" style="display: none;">
         <div id="admin-controls" class="admin-controls-container">
             <!-- Dynamic Content -->
         </div>
@@ -447,30 +528,77 @@
         };
 
         // Box Types
+        // Box Types
         let defaultBoxTypes = [
             {
-                id: 'normal',
-                name: 'Caixa Normal',
-                chance: 90,
-                textures: ['box_normal_1', 'box_normal_2', 'box_normal_3'],
-                width: 128,
-                height: 128,
+                id: 'normal_square',
+                name: 'Normal Quadrada',
+                chance: 45,
+                width: 143,
+                height: 143,
                 density: 0.01,
-                friction: 0.5,
+                friction: 0.3,
                 bounce: 0.1,
                 variations: 1,
                 sizeIncrement: 0
             },
             {
-                id: 'heavy',
-                name: 'Caixa Pesada',
-                chance: 10,
-                textures: ['box_heavy_1', 'box_heavy_2'],
-                width: 180,
-                height: 180,
-                density: 0.05,
-                friction: 0.7,
-                bounce: 0.05,
+                id: 'normal_rect',
+                name: 'Normal Retangular',
+                chance: 40,
+                width: 172,
+                height: 98,
+                density: 0.01,
+                friction: 0.3,
+                bounce: 0.1,
+                variations: 1,
+                sizeIncrement: 0
+            },
+            {
+                id: 'goal_square',
+                name: 'Meta Quadrada',
+                chance: 5,
+                width: 143,
+                height: 143,
+                density: 0.07,
+                friction: 0.9,
+                bounce: 0.01,
+                variations: 1,
+                sizeIncrement: 0
+            },
+            {
+                id: 'goal_rect',
+                name: 'Meta Retangular',
+                chance: 5,
+                width: 172,
+                height: 98,
+                density: 0.07,
+                friction: 0.9,
+                bounce: 0.01,
+                variations: 1,
+                sizeIncrement: 0
+            },
+            {
+                id: 'ice_square',
+                name: 'Gelo Quadrada',
+                chance: 3,
+                width: 143,
+                height: 143,
+                density: 0.12,
+                friction: 0.16,
+                bounce: 0.02,
+                variations: 1,
+                sizeIncrement: 0
+            },
+            {
+                id: 'ice_rect',
+                name: 'Gelo Retangular',
+                chance: 3,
+                width: 172,
+                height: 98,
+                density: 0.12,
+                friction: 0.16,
+                bounce: 0.02,
                 variations: 1,
                 sizeIncrement: 0
             }
@@ -584,15 +712,16 @@
 
             boxTypes.forEach((type, index) => {
                 const tr = document.createElement('tr');
-                const badgeClass = type.id === 'heavy' ? 'badge-heavy' : 'badge-normal';
-                const badgeName = type.id === 'heavy' ? 'Pesada' : 'Normal';
+                let badgeClass = 'badge-normal';
+                if (type.id.includes('goal')) badgeClass = 'badge-heavy'; // Reusing heavy style for goal
+                if (type.id.includes('ice')) badgeClass = 'badge-normal'; // Or create new style
 
                 // Get sprite count
                 const uploadedSprites = JSON.parse(localStorage.getItem(`sprites_${type.id}`) || '[]');
                 const spriteCount = uploadedSprites.length;
 
                 tr.innerHTML = `
-                    <td><span class="badge ${badgeClass}">${badgeName}</span></td>
+                    <td><span class="badge ${badgeClass}">${type.name}</span></td>
                     <td><input type="number" class="box-input" data-id="${index}" data-field="chance" value="${type.chance}"></td>
                     <td><input type="number" class="box-input" data-id="${index}" data-field="density" step="0.01" value="${type.density}"></td>
                     <td><input type="number" class="box-input" data-id="${index}" data-field="width" value="${type.width}"></td>
@@ -725,6 +854,36 @@
 
         });
 
+        // Auth Logic
+        function checkAuth() {
+            const isAuth = localStorage.getItem('adminAuthenticated');
+            if (isAuth === 'true') {
+                document.getElementById('login-modal').style.display = 'none';
+                document.getElementById('admin-panel').style.display = 'flex';
+            } else {
+                document.getElementById('login-modal').style.display = 'flex';
+                document.getElementById('admin-panel').style.display = 'none';
+                document.getElementById('admin-pass').focus();
+            }
+        }
+
+        window.login = function () {
+            const pass = document.getElementById('admin-pass').value;
+            const errorMsg = document.getElementById('login-error');
+
+            if (pass === 'admin123') {
+                localStorage.setItem('adminAuthenticated', 'true');
+                checkAuth();
+            } else {
+                errorMsg.style.display = 'block';
+                document.getElementById('admin-pass').value = '';
+                document.getElementById('admin-pass').focus();
+            }
+        }
+
+        // Initialize Auth Check
+        checkAuth();
+
         // Save Configuration Function (Called by button onclick)
         // EXPOSED TO GLOBAL SCOPE via window
         window.saveConfig = async function () {
@@ -765,6 +924,7 @@
         // Logout function (used by exit button)
         // EXPOSED TO GLOBAL SCOPE via window
         window.logout = function () {
+            localStorage.removeItem('adminAuthenticated');
             window.location.href = 'index.html';
         }
     </script>

@@ -262,6 +262,25 @@
                 padding: 15px 35px !important;
             }
         }
+
+        /* Sound Button */
+        #sound-btn-index {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: transparent;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+
+        #sound-btn-index img {
+            width: 26px;
+            height: 26px;
+            image-rendering: pixelated;
+            filter: drop-shadow(3px 3px 0 #000);
+        }
     </style>
 </head>
 
@@ -275,7 +294,7 @@
             <!-- Grupo 1: Logo (hug content) -->
             <div class="logo-group" style="display: flex; flex-direction: column; align-items: center; flex: 0 0 auto;">
                 <img src="assets/start_screen/logo_text_new.png" class="logo-text" alt="Ruti Stack"
-                    style="width: 450px; max-width: 90vw; image-rendering: pixelated; margin-top: 20px;">
+                    style="width: 330px; max-width: 90vw; image-rendering: pixelated; margin-top: 80px;">
             </div>
 
             <!-- Grupo 2: Coruja + Stack (fill available space) -->
@@ -283,11 +302,11 @@
                 style="flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-height: 0;">
                 <!-- Coruja (tamanho fixo) -->
                 <img src="assets/start_screen/owl.png" class="char-owl" alt="Owl"
-                    style="width: 250px; image-rendering: pixelated;">
+                    style="width: 250px; image-rendering: pixelated; top: 50px; position: relative;">
 
                 <!-- Stack (ocupa espaço vago) -->
                 <img src="assets/start_screen/stack.png" class="char-stack" alt="Stack"
-                    style="height: 100%; width: auto; max-height: 570px; object-fit: contain; object-position: bottom; image-rendering: pixelated;">
+                    style="height: 100%; width: auto; min-height: 430px; max-height: 570px; object-fit: contain; object-position: bottom; image-rendering: pixelated;">
             </div>
 
             <!-- Grupo 3: Botões (posição absoluta sobre as caixas) -->
@@ -307,9 +326,67 @@
         </div>
     </div>
 
+    <!-- Sound Button -->
+    <button id="sound-btn-index">
+        <img id="sound-icon-index" src="assets/sprites/icons/audio.svg" alt="Sound">
+    </button>
+
 
 
     <script>
+        // --- AUDIO SYSTEM ---
+        let backgroundMusic;
+        let audioInitialized = false;
+
+        function initAudio() {
+            if (audioInitialized) return;
+            audioInitialized = true;
+
+            backgroundMusic = new Audio('assets/audio/index_background.ogg');
+            backgroundMusic.loop = true;
+            backgroundMusic.volume = 0.5;
+
+            // Try to play
+            backgroundMusic.play().catch(err => {
+                console.log('Audio autoplay blocked, waiting for user interaction');
+            });
+        }
+
+        // Initialize audio on first user interaction
+        function startAudioOnInteraction() {
+            initAudio();
+            // Remove listeners after first interaction
+            document.removeEventListener('click', startAudioOnInteraction);
+            document.removeEventListener('keydown', startAudioOnInteraction);
+        }
+
+        document.addEventListener('click', startAudioOnInteraction);
+        document.addEventListener('keydown', startAudioOnInteraction);
+
+        // Try to init immediately (may fail due to autoplay policy)
+        window.addEventListener('load', () => {
+            setTimeout(initAudio, 500);
+        });
+
+        // Sound Toggle Button Logic
+        const soundBtnIndex = document.getElementById('sound-btn-index');
+        const soundIconIndex = document.getElementById('sound-icon-index');
+        let isMutedIndex = false;
+
+        soundBtnIndex.addEventListener('click', () => {
+            isMutedIndex = !isMutedIndex;
+
+            if (isMutedIndex) {
+                soundIconIndex.src = 'assets/sprites/icons/no-audio.svg';
+                if (backgroundMusic) backgroundMusic.pause();
+            } else {
+                soundIconIndex.src = 'assets/sprites/icons/audio.svg';
+                if (backgroundMusic) {
+                    backgroundMusic.play().catch(err => console.log('Play failed:', err));
+                }
+            }
+        });
+
         // Menu Logic
         const playBtn = document.getElementById('play-btn');
         const rankingBtn = document.getElementById('ranking-btn');
@@ -327,6 +404,9 @@
 
         // Play Button Logic
         playBtn.addEventListener('click', () => {
+            // Stop background music before navigating
+            if (backgroundMusic) backgroundMusic.pause();
+
             // Generate and save a random name
             const randomName = generateRandomName();
             localStorage.setItem('playerName', randomName);
@@ -335,13 +415,16 @@
 
         // Config Button Logic
         configBtn.addEventListener('click', () => {
+            if (backgroundMusic) backgroundMusic.pause();
             window.location.href = 'admin.html';
         });
 
         // Ranking Button Logic
         rankingBtn.addEventListener('click', () => {
+            if (backgroundMusic) backgroundMusic.pause();
             window.location.href = 'ranking.html';
         });
+
         // Keyboard Shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {

@@ -106,7 +106,8 @@
             height: 100%;
             z-index: 0;
             pointer-events: none;
-            background: var(--bg-grad); /* will be updated dynamically */
+            background: var(--bg-grad);
+            /* will be updated dynamically */
         }
 
         .pixel-box {
@@ -337,7 +338,9 @@
             left: 0 !important;
             width: 100% !important;
             height: 100% !important;
-            background: none;
+            background: linear-gradient(180deg, #cfe9e3 0%, #a2d7e6 50%, #8bb6d9 100%);
+            animation: loading-gradient-cycle 3s ease-in-out infinite alternate;
+            background-size: 100% 100%;
             justify-content: center !important;
             align-items: center !important;
             z-index: 10000 !important;
@@ -824,16 +827,32 @@
 
     <!-- Loading Screen -->
     <div id="loading-screen"
-        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(180deg, #cfe9e3 0%, #a2d7e6 50%, #8bb6d9 100%); animation: loading-gradient-cycle 12s ease-in-out infinite; background-size: 100% 100%; display: flex; justify-content: center; align-items: center; z-index: 99999; flex-direction: column; gap: 30px;">
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(180deg, #cfe9e3 0%, #a2d7e6 50%, #8bb6d9 100%); animation: loading-gradient-cycle 6s ease-in-out infinite alternate; background-size: 100% 100%; display: flex; justify-content: center; align-items: center; z-index: 99999; flex-direction: column; gap: 30px;">
         <div
             style="background: none; padding: 40px; display: flex; flex-direction: column; align-items: center; gap: 30px;">
             <img src="assets/sprites/normal/1.png" alt="Loading"
                 style="width: 128px; height: 128px; image-rendering: pixelated; animation: spin 2s linear infinite;">
-        <div
-            style="color: #ffffff; font-family: 'Press Start 2P'; font-size: 16px; animation: pulse 1.5s infinite; text-shadow: 2px 2px 0 #000;">
-            CARREGANDO...</div>
+            <div
+                style="color: #ffffff; font-family: 'Press Start 2P'; font-size: 16px; animation: pulse 1.5s infinite; text-shadow: 2px 2px 0 #000;">
+                CARREGANDO...</div>
         </div>
     </div>
+
+    <style>
+        @keyframes loading-gradient-cycle {
+            0% {
+                background: linear-gradient(180deg, #cfe9e3 0%, #a2d7e6 50%, #8bb6d9 100%);
+            }
+
+            50% {
+                background: linear-gradient(180deg, #c9d4ff 0%, #f1c6ff 50%, #ffcad4 100%);
+            }
+
+            100% {
+                background: linear-gradient(180deg, #ffcba4 0%, #ff9a9e 50%, #ff5f6d 100%);
+            }
+        }
+    </style>
 
     <!-- Game Container -->
     <div id="game-container"></div>
@@ -849,7 +868,12 @@
 
     <!-- Top Buttons -->
     <div id="top-right-buttons"
-            style="position: fixed; top: 20px; right: 20px; z-index: 999; display: flex; gap: 10px; align-items: center;">
+        style="position: fixed; top: 20px; right: 20px; z-index: 999; display: flex; gap: 10px; align-items: center;">
+        <button id="sound-btn"
+            style="background: transparent; border: none; padding: 8px; cursor: pointer; pointer-events: auto;">
+            <img id="sound-icon" src="assets/sprites/icons/audio.svg" alt="Sound" width="26" height="26"
+                style="image-rendering: pixelated; filter: drop-shadow(3px 3px 0 #000); display: block;">
+        </button>
         <button id="debug-btn" class="hidden"
             style="background: transparent; border: none; padding: 8px; cursor: pointer; pointer-events: auto;">
             <img src="assets/sprites/icons/settgings.svg" alt="Config" width="26" height="26"
@@ -910,7 +934,7 @@
         // --- GAME CONFIGURATION ---
         let gameConfig = {
             gravity: 1,
-            baseSpeed: 2,
+            baseSpeed: 2.5,
             difficultyMultiplier: 0.1
         };
 
@@ -1201,7 +1225,33 @@
         let currentBgPalette = backgroundPalettes[0];
         let prevBgPalette = backgroundPalettes[0];
         let bgTransitionStart = null;
-        const BG_TRANSITION_MS = 2000;
+        const BG_TRANSITION_MS = 5000;
+
+        // --- AUDIO SYSTEM ---
+        let musicBg;
+        let soundEnabled = true;
+
+        function playSound(scene, key, config = {}) {
+            if (!soundEnabled) return;
+            try {
+                scene.sound.play(key, config);
+            } catch (e) {
+                // console.warn('Audio play failed:', e);
+            }
+        }
+
+        function initAudio(scene) {
+            if (!musicBg) {
+                try {
+                    musicBg = scene.sound.add('music_bg', { loop: true, volume: 0.25 });
+                    if (isGameActive) {
+                        musicBg.play();
+                    }
+                } catch (e) {
+                    console.warn('Music init failed:', e);
+                }
+            }
+        }
 
         function blendHex(c1, c2, t) {
             const n1 = parseInt(c1.replace('#', ''), 16);
@@ -1215,7 +1265,15 @@
         }
 
         function applyDifficultyScaling() {
-            craneSpeed = gameConfig.baseSpeed + (score * gameConfig.difficultyMultiplier);
+            // Score is now number of boxes (1, 2, 3...).
+            // Linear scaling: 0.1 speed per box.
+            // 10 boxes = +1 speed. 20 boxes = +2 speed (max).
+            const speedIncrease = score * gameConfig.difficultyMultiplier;
+
+            // Cap the additional speed to keep the crane manageable.
+            const maxAdditionalSpeed = 2; // max extra beyond baseSpeed
+            const additionalSpeed = Math.min(speedIncrease, maxAdditionalSpeed);
+            craneSpeed = gameConfig.baseSpeed + additionalSpeed;
         }
 
         // Choose palette phase by score (acts as difficulty stage)
@@ -1332,25 +1390,25 @@
             this.load.crossOrigin = 'anonymous'; // Fix CORS for Firebase Storage
             const graphics = this.make.graphics({ x: 0, y: 0, add: false });
 
-        // Load ranking heights (optional, from localStorage)
-        try {
-            rankingHeights = JSON.parse(localStorage.getItem('rankingBestHeights') || '[]')
-                .filter(v => typeof v === 'number');
-        } catch (e) {
-            rankingHeights = new Array(5).fill(0);
-            localStorage.setItem('rankingBestHeights', JSON.stringify(rankingHeights));
-        }
-        if (rankingHeights.length === 0) {
-            rankingHeights = new Array(5).fill(0); // default placeholders
-            localStorage.setItem('rankingBestHeights', JSON.stringify(rankingHeights));
-        }
+            // Load ranking heights (optional, from localStorage)
+            try {
+                rankingHeights = JSON.parse(localStorage.getItem('rankingBestHeights') || '[]')
+                    .filter(v => typeof v === 'number');
+            } catch (e) {
+                rankingHeights = new Array(5).fill(0);
+                localStorage.setItem('rankingBestHeights', JSON.stringify(rankingHeights));
+            }
+            if (rankingHeights.length === 0) {
+                rankingHeights = new Array(5).fill(0); // default placeholders
+                localStorage.setItem('rankingBestHeights', JSON.stringify(rankingHeights));
+            }
 
             // God button listener (set up once DOM is ready)
             const godBtn = document.getElementById('god-btn');
             if (godBtn && !godBtn.dataset.bound) {
                 godBtn.dataset.bound = '1';
                 godBtn.addEventListener('click', () => {
-                godMode = !godMode;
+                    godMode = !godMode;
                     godBtn.textContent = godMode ? 'GOD ON' : 'GOD';
                     if (godMode) {
                         godBtn.style.background = '#00aa55';
@@ -1383,6 +1441,16 @@
                 this.load.image(`ice_${i}`, `assets/sprites/ice/${i}.png`);
                 this.load.image(`ice_rect_${i}`, `assets/sprites/ice_retangulo/${i}.png`);
             }
+
+            // --- AUDIO ASSETS ---
+            this.load.audio('music_bg', 'assets/audio/music_bg.mp3');
+            this.load.audio('sfx_gameover', 'assets/audio/game over.ogg');
+            this.load.audio('sfx_land', 'assets/audio/sfx_land.mp3.ogg');
+            this.load.audio('sfx_ice', 'assets/audio/sfx_ice.ogg');
+            this.load.audio('sfx_iron', 'assets/audio/sfx_iron.ogg');
+            this.load.audio('sfx_ui_click', 'assets/audio/sfx_ui_btn.ogg');
+            this.load.audio('sfx_heart_lost', 'assets/audio/heart_lost.ogg');
+            this.load.audio('sfx_score_pass', 'assets/audio/score_pass.ogg');
 
             // 2. Crane (Simple Gray)
             graphics.clear();
@@ -1574,53 +1642,7 @@
             // Select Texture - Map new types to existing sprite categories
 
             // ... (skip to createPerfectDropEffect) ...
-            function createPerfectDropEffect(scene, x, y, boxWidth = 100) {
-                // "Fusion Seal" Animation - REFINED
-                // Occurs 200ms after landing
 
-                // 1. "PERFECT!" Text (Screen Space - Fixed Position)
-                // Position: Right side of screen, vertically centered
-                const screenWidth = scene.scale.width;
-                const screenHeight = scene.scale.height;
-
-                const textX = screenWidth - 150; // Fixed on right side
-                const textY = screenHeight / 2;  // Vertically centered
-
-                const text = scene.add.text(textX, textY, 'PERFECT!\n+3', {
-                    fontFamily: '"Press Start 2P"',
-                    fontSize: '32px', // Larger font
-                    color: '#ffff00',
-                    stroke: '#000000',
-                    strokeThickness: 6,
-                    align: 'center'
-                });
-                text.setOrigin(0.5);
-                text.setScrollFactor(0); // Fix to camera (Screen Space)
-                text.setDepth(2000); // Very high depth
-                text.setScale(0);
-
-                // Animate Text (Pop in and out)
-                scene.tweens.add({
-                    targets: text,
-                    scaleX: 1,
-                    scaleY: 1,
-                    duration: 300,
-                    ease: 'Back.out',
-                    onComplete: () => {
-                        scene.tweens.add({
-                            targets: text,
-                            alpha: 0,
-                            scaleX: 1.2, // Pulse out
-                            scaleY: 1.2,
-                            duration: 500,
-                            delay: 500,
-                            onComplete: () => {
-                                text.destroy();
-                            }
-                        });
-                    }
-                });
-            }
 
             // Matter.js World Bounds - Completely disabled to allow boxes to fall off screen
             // No bounds at all = boxes can go anywhere
@@ -1738,7 +1760,21 @@
                                 // Shake camera: duration 200ms, intensity 0.005
                                 this.cameras.main.shake(200, 0.005);
                             }
+                            // Play sound immediately on collision
+                            if (!body.gameObject.hasPlayedSound) {
+                                body.gameObject.hasPlayedSound = true;
+                                const cat = body.gameObject.boxCategory;
+                                if (cat === 'ice' || cat === 'iceRect') {
+                                    playSound(this, 'sfx_ice', { volume: 0.8 });
+                                } else if (cat === 'goal' || cat === 'goalRect') {
+                                    playSound(this, 'sfx_iron', { volume: 0.8 });
+                                } else {
+                                    playSound(this, 'sfx_land', { volume: 0.6, detune: Phaser.Math.Between(-200, 200) });
+                                }
+                            }
 
+                            // Freeze box after collision (prevent bouncing/sliding)
+                            // Body starts freezing after 1 second of low velocity
                             if (!body.gameObject.isFreezing) {
                                 body.gameObject.isFreezing = true;
                                 this.time.delayedCall(1000, () => {
@@ -1751,51 +1787,30 @@
 
                                             if (!body.gameObject.hasScored) {
                                                 body.gameObject.hasScored = true;
-                                                let points = 1;
-
-                                                // Perfect Drop Logic
-                                                // Find the box directly below (or platform)
-                                                // Since we don't track "below" easily, we can check x-alignment with center or previous box.
-                                                // Simplest: Check alignment with screen center (if tower is straight) OR check alignment with the box with highest Y that is > current Y.
-                                                // Better: Check alignment with the box that this one is resting on.
-                                                // Matter.js collision pairs gave us the other body.
-                                                // Let's use the `pair` info we are in!
-                                                // Wait, we are in a delayed call, `pair` is not available here directly unless we passed it.
-                                                // But we can check `totalDeviation` logic or just check the last static box added.
-                                                // Let's iterate to find the box directly below.
-
-                                                // Find static box with closest Y below current box and overlapping X
-                                                const currentBox = body.gameObject;
-                                                const belowBox = boxes.find(b =>
-                                                    b !== currentBox &&
-                                                    b.body.isStatic &&
-                                                    b.y > currentBox.y &&
-                                                    Math.abs(b.x - currentBox.x) < (b.width / 2 + currentBox.width / 2)
-                                                );
-
-                                                if (belowBox || currentBox.y > height - 150) { // Check against platform (approx) if no box below
-                                                    const targetX = belowBox ? belowBox.x : width / 2; // Platform center is width/2
-                                                    const diff = Math.abs(currentBox.x - targetX);
-
-                                                    // TEMPORARY: Increased threshold for testing animation (was 5)
-                                                    if (diff <= 50) {
-                                                        points += 3;
-                                                        // Delay effect to sync with camera settle (200ms)
-                                                        this.time.delayedCall(200, () => {
-                                                            createPerfectDropEffect(this, currentBox.x, currentBox.y + currentBox.height / 2, currentBox.width);
-                                                        });
-                                                    }
-                                                }
-                                                score += points;
-                                                updateScoreUI();
+                                                const landedBox = body.gameObject;
 
                                                 // Track current game best height (min Y)
-                                                if (currentGameMinY === null || currentBox.y < currentGameMinY) {
-                                                    currentGameMinY = currentBox.y;
+                                                if (currentGameMinY === null || landedBox.y < currentGameMinY) {
+                                                    currentGameMinY = landedBox.y;
                                                 }
+
+                                                // SCORE IS NOW 1 POINT PER BOX
+                                                score += 1;
+                                                updateScoreUI();
+
+                                                // Perfect Drop Logic REMOVED as per request
                                             }
                                         } else {
-                                            body.gameObject.isFreezing = false;
+                                            // Retry if still moving
+                                            if (!body.gameObject.setStatic && body.gameObject.isFreezing) {
+                                                this.time.delayedCall(500, () => {
+                                                    if (body.gameObject && body.gameObject.body) {
+                                                        body.gameObject.isFreezing = false; // Allow re-evaluation
+                                                    }
+                                                });
+                                            } else {
+                                                body.gameObject.isFreezing = false;
+                                            }
                                         }
                                     }
                                 });
@@ -2000,51 +2015,49 @@
                 // First box: prefer normal_square or normal_rect
                 selectedType = boxTypes.find(t => t.id.includes('normal')) || boxTypes[0];
             }
-            // Filter box types based on difficulty (score)
-            // Ice boxes only appear after score >= 10
-            let availableTypes = boxTypes.filter(type => {
+            // FORCE NORMAL BOXES FOR THE FIRST FEW DROPS (e.g. first 3 boxes)
+            const isEarlyGame = score < 3;
+
+            let possibleTypes = boxTypes; // Use boxTypes as the base list
+
+            // Filter available types based on game state
+            let availableTypes = possibleTypes.filter(type => {
+                // Ice boxes only appear after score >= 10
                 if (type.category.includes('ice') && score < 10) return false;
+                // If early game, only allow 'normal' or 'normalRect' types
+                if (isEarlyGame && !(type.category === 'normal' || type.category === 'normalRect')) return false;
                 return true;
             });
 
-            // Recalculate total chance for available types
-            let totalChance = 0;
-            for (const type of availableTypes) {
-                totalChance += type.chance;
-            }
+            // Fallback if filter leaves nothing (shouldn't happen if config is good)
+            if (availableTypes.length === 0) availableTypes = possibleTypes;
 
-            let random = Phaser.Math.Between(0, totalChance);
-            for (const type of availableTypes) {
-                if (random <= type.chance) {
-                    selectedType = type;
+            // Weighted Random Selection
+            const totalChance = availableTypes.reduce((sum, t) => sum + (t.chance || 1), 0);
+            let random = Math.random() * totalChance;
+            selectedType = availableTypes[0]; // Initialize with first available type as fallback
+
+            for (const t of availableTypes) {
+                random -= (t.chance || 1);
+                if (random <= 0) {
+                    selectedType = t;
                     break;
                 }
-                random -= type.chance;
             }
 
-            // Select Texture - Map new types to existing sprite categories
-            const spriteCategory = selectedType.category || 'normal';
-            const typeTextures = (selectedType.textures || []).filter(key => scene.textures.exists(key));
-            let spriteList = typeTextures;
-            if (spriteList.length === 0) {
-                if (spriteCategory === 'goal') {
-                    spriteList = availableSprites.goal;
-                } else if (spriteCategory === 'goalRect') {
-                    spriteList = availableSprites.goalRect;
-                } else if (spriteCategory === 'ice') {
-                    spriteList = availableSprites.ice;
-                } else if (spriteCategory === 'iceRect') {
-                    spriteList = availableSprites.iceRect;
-                } else {
-                    // Normal boxes: use rect sprites when id hints rectangle
-                    if (selectedType.id && selectedType.id.includes('rect') && availableSprites.normalRect.length > 0) {
-                        spriteList = availableSprites.normalRect;
-                    } else {
-                        spriteList = availableSprites.normal;
-                    }
-                }
+            // Select Sprite Texture
+            const spriteCategory = selectedType.category;
+            let spriteList = availableSprites[spriteCategory];
+
+            // Fallback logic
+            if (!spriteList || spriteList.length === 0) {
+                // Try normal if specific category missing
+                spriteList = availableSprites.normal;
             }
-            if (spriteCategory === 'normal') {
+
+            // Ensure we don't pick a goal/heavy sprite if we really want normal
+            // (Double check in case availableSprites has mixed content, though it shouldn't)
+            if (spriteCategory === 'normal' || spriteCategory === 'normalRect') {
                 const isRect = selectedType.id && selectedType.id.includes('rect');
                 if (isRect && availableSprites.normalRect.length > 0) {
                     spriteList = availableSprites.normalRect;
@@ -2066,7 +2079,6 @@
             const box = scene.matter.add.image(width / 2, crane.y + 250, textureKey);
             box.setDepth(5); // keep rope behind box
 
-            // Apply Physics Properties
             // Apply Physics Properties
             // DYNAMIC PHYSICS: Match body size to BOX TYPE dimensions (User Request)
             // Calculate size with variation
@@ -2130,6 +2142,7 @@
 
             isDropping = true;
             triggerLever(scene);
+            // playSound(scene, 'sfx_drop', { volume: 0.8 }); // Asset missing
             logEvent('DROP_BOX', { x: crane.x, y: crane.y, angle: currentBox.rotation });
 
             currentBox.isCarried = false;
@@ -2219,11 +2232,19 @@
             const gc = document.getElementById('game-container');
             if (gc) gc.style.opacity = '1';
 
-            // Show Debug Button
-            const debugBtn = document.getElementById('debug-btn');
-            if (debugBtn) debugBtn.classList.remove('hidden');
+            // Show Debug Button only if admin is logged in (checked in script below)
+            // const debugBtn = document.getElementById('debug-btn');
+            // if (debugBtn) debugBtn.classList.remove('hidden');
 
             isGameActive = true;
+
+            // Init/Resume Audio
+            if (game) {
+                const scene = game.scene.scenes[0];
+                initAudio(scene);
+                if (musicBg && !musicBg.isPlaying) musicBg.play();
+            }
+
             score = 0;
             lives = 3; // Reset lives (ignored when god mode)
             currentGameMinY = null; // Reset current game tracking
@@ -2422,6 +2443,10 @@
         function gameOver() {
             isGameActive = false;
             if (game) {
+                // Stop music and play game over sound
+                if (musicBg) musicBg.stop();
+                playSound(game.scene.scenes[0], 'sfx_gameover', { volume: 0.3 });
+
                 // Show sad face immediately
                 if (mascotFace) {
                     mascotFace.setTexture('mascot_sad');
@@ -2523,6 +2548,9 @@
                 }, 150);
             }
 
+            // Play heart loss sound
+            playSound(scene, 'sfx_heart_lost', { volume: 0.7 });
+
             // 2. Falling Heart Animation
             // We are about to lose life at index `lives - 1`
             const heartIndex = lives - 1;
@@ -2605,8 +2633,8 @@
             if (!recordLine) return;
             recordLine.clear();
             if (sessionBestY !== null) {
-                const dash = 14;
-                const gap = 10;
+                const dash = 8;
+                const gap = 6;
                 const y = sessionBestY;
                 // Shadow
                 recordLine.lineStyle(6, 0x000000, 0.35);
@@ -2615,8 +2643,8 @@
                     recordLine.lineTo(x + dash, y + 1);
                 }
                 recordLine.strokePath();
-                // Main line
-                recordLine.lineStyle(2, 0x00ffff, 0.9);
+                // Main line - WHITE
+                recordLine.lineStyle(1, 0xffffff, 0.9);
                 for (let x = 0; x < scene.scale.width; x += dash + gap) {
                     recordLine.moveTo(x, y);
                     recordLine.lineTo(x + dash, y);
@@ -2626,32 +2654,49 @@
                 const cam = scene.cameras.main;
                 const screenY = y - cam.scrollY;
                 if (!recordLineLabel) {
-                    recordLineLabel = scene.add.text(scene.scale.width - 70, screenY - 12, 'VOCÊ', {
+                    // CHANGED TO LEFT SIDE (20px)
+                    recordLineLabel = scene.add.text(20, screenY - 12, 'SEU RECORD', {
                         fontFamily: '"Press Start 2P"',
                         fontSize: '10px',
-                        color: '#000',
-                        backgroundColor: '#00ffff',
+                        color: '#888888', // Gray text
+                        backgroundColor: '#ffffff', // White background
                         padding: { x: 6, y: 4 }
                     });
                     recordLineLabel.setDepth(1000);
                     recordLineLabel.setScrollFactor(0);
                 } else {
-                    recordLineLabel.setPosition(scene.scale.width - 70, screenY - 12);
+                    recordLineLabel.setPosition(20, screenY - 12);
+                    recordLineLabel.setText('SEU RECORD');
+                    recordLineLabel.setStyle({ backgroundColor: '#ffffff', color: '#888888' }); // Update style if exists
                 }
             }
 
-            // Ranking lines (other players)
+            // Ranking lines (other players) - TOP 3 ONLY
             if (rankingLines.length === 0 && rankingHeights.length > 0) {
-                rankingHeights.forEach((y, idx) => {
+                // Load full ranking data with names
+                const rankingData = JSON.parse(localStorage.getItem('highScores') || '[]')
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 3); // Only top 3
+
+                rankingHeights.slice(0, 3).forEach((y, idx) => {
+                    // Medal colors: Gold, Silver, Bronze
+                    const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
+                    const bgColor = medalColors[idx];
+
+                    // Get player name from ranking data
+                    const playerName = rankingData[idx] ? rankingData[idx].playerName : 'TOP';
+
                     rankingLines.push({
                         y,
                         idx,
                         gfx: scene.add.graphics(),
-                        label: scene.add.text(scene.scale.width - 80, 0, `TOP ${idx + 1}`, {
+                        bgColor, // Store for line drawing
+                        // CHANGED TO LEFT SIDE (10px)
+                        label: scene.add.text(10, 0, `TOP ${idx + 1} - ${playerName}`, {
                             fontFamily: '"Press Start 2P"',
-                            fontSize: '9px',
+                            fontSize: '10px',
                             color: '#000',
-                            backgroundColor: '#ffde59',
+                            backgroundColor: bgColor,
                             padding: { x: 4, y: 3 }
                         }).setDepth(900).setScrollFactor(0),
                         passed: false
@@ -2662,8 +2707,8 @@
             rankingLines.forEach(line => {
                 const g = line.gfx;
                 g.clear();
-                const dash = 10;
-                const gap = 8;
+                const dash = 6;
+                const gap = 5;
                 const y = line.y;
                 // Shadow
                 g.lineStyle(5, 0x000000, 0.25);
@@ -2672,8 +2717,9 @@
                     g.lineTo(x + dash, y + 1);
                 }
                 g.strokePath();
-                // Main line
-                g.lineStyle(2, 0xffde59, 0.9);
+                // Main line - use medal color
+                const lineColor = parseInt(line.bgColor.replace('#', ''), 16);
+                g.lineStyle(1, lineColor, 0.9);
                 for (let x = 0; x < scene.scale.width; x += dash + gap) {
                     g.moveTo(x, y);
                     g.lineTo(x + dash, y);
@@ -2682,28 +2728,34 @@
 
                 const cam = scene.cameras.main;
                 const screenY = y - cam.scrollY;
-                    line.label.setPosition(scene.scale.width - 80, screenY - 10);
+                // CHANGED TO LEFT SIDE (10px)
+                line.label.setPosition(10, screenY - 10);
 
                 // Pass notification
                 if (!line.passed && currentGameMinY !== null && currentGameMinY < y) {
                     line.passed = true;
-                    const ping = scene.add.text(scene.scale.width / 2, screenY - 20, `PASSOU TOP${line.idx + 1}!`, {
+                    // Play sound only for top 3
+                    if (line.idx < 3) {
+                        playSound(scene, 'sfx_score_pass', { volume: 0.4 });
+                    }
+                    // CHANGED TO LEFT SIDE (20px) - VERTICALLY CENTERED
+                    const ping = scene.add.text(20, scene.scale.height / 2 - 16, `PASSOU TOP${line.idx + 1}!`, {
                         fontFamily: '"Press Start 2P"',
-                        fontSize: '12px',
+                        fontSize: '20px',
                         color: '#ffffff',
-                        backgroundColor: '#00aa55',
+                        backgroundColor: line.bgColor, // Use medal color
                         padding: { x: 6, y: 4 }
-                }).setDepth(1200).setScrollFactor(0);
-                scene.tweens.add({
-                    targets: ping,
-                    alpha: 0,
-                    y: screenY - 50,
-                    duration: 800,
-                    onComplete: () => ping.destroy()
-                });
-            }
-        });
-    }
+                    }).setDepth(1200).setScrollFactor(0);
+                    scene.tweens.add({
+                        targets: ping,
+                        alpha: 0,
+                        y: scene.scale.height / 2 - 66, // Move UP (was screenY - 50)
+                        duration: 800,
+                        onComplete: () => ping.destroy()
+                    });
+                }
+            });
+        }
 
         document.addEventListener('keydown', (e) => {
             const gameOverScreen = document.getElementById('game-over-screen');
@@ -2765,13 +2817,25 @@
             }
         };
 
+        // --- UI EVENT LISTENERS ---
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (game && game.scene && game.scene.scenes[0]) {
+                    playSound(game.scene.scenes[0], 'sfx_ui_click', { volume: 0.5 });
+                }
+            });
+        });
+
         document.getElementById('restart-btn').addEventListener('click', () => {
             location.reload();
         });
 
         // Ranking Button Logic
         document.getElementById('ranking-btn').addEventListener('click', () => {
-            window.location.href = 'ranking.html';
+            // Delay redirect to allow sound to play
+            setTimeout(() => {
+                window.location.href = 'ranking.html';
+            }, 200);
         });
 
         // Name Input Logic
@@ -2879,12 +2943,10 @@
                 const input = document.getElementById(`char${i}`);
                 if (input) input.value = '';
             }
+            // Delay redirect to allow sound to play
             setTimeout(() => {
-                saveBtn.innerHTML = originalText;
-                saveBtn.disabled = false;
-                saveBtn.style.opacity = "1";
-                saveBtn.style.cursor = "pointer";
-            }, 1000);
+                window.location.href = 'index.html';
+            }, 1200);
         });
 
         // --- DYNAMIC ADMIN PANEL ---
@@ -3134,10 +3196,45 @@
     </div>
 
     <script>
+        // Sound Toggle Logic
+        const soundBtn = document.getElementById('sound-btn');
+        const soundIcon = document.getElementById('sound-icon');
+        let isMuted = false;
+
+        soundBtn.addEventListener('click', () => {
+            isMuted = !isMuted;
+            soundEnabled = !isMuted;
+
+            // Update icon
+            if (isMuted) {
+                soundIcon.src = 'assets/sprites/icons/no-audio.svg';
+                if (musicBg && musicBg.setMute) {
+                    musicBg.setMute(true);
+                }
+            } else {
+                soundIcon.src = 'assets/sprites/icons/audio.svg';
+                if (musicBg && musicBg.setMute) {
+                    musicBg.setMute(false);
+                }
+            }
+        });
+
         // Debug Sidebar Logic
         const debugBtn = document.getElementById('debug-btn');
         const debugSidebar = document.getElementById('debug-sidebar');
         const closeDebugBtn = document.getElementById('close-debug-btn');
+
+        // Check if admin is logged in (session check)
+        const isAdminLoggedIn = sessionStorage.getItem('adminLoggedIn') === 'true';
+        if (isAdminLoggedIn) {
+            debugBtn.classList.remove('hidden');
+        }
+
+        // Hide God Mode button unless admin is logged in
+        const godBtn = document.getElementById('god-btn');
+        if (!isAdminLoggedIn) {
+            godBtn.style.display = 'none';
+        }
 
         // Inputs
         const inputGravity = document.getElementById('debug-gravity');

@@ -57,7 +57,7 @@
 
         .ranking-header {
             display: grid;
-            grid-template-columns: 80px 1fr 120px 120px 140px;
+            grid-template-columns: 80px 1fr 120px 140px;
             gap: 20px;
             padding: 15px 0;
             background: none;
@@ -68,7 +68,7 @@
 
         .ranking-item {
             display: grid;
-            grid-template-columns: 80px 1fr 120px 120px 140px;
+            grid-template-columns: 80px 1fr 120px 140px;
             gap: 20px;
             padding: 12px 0;
             background: none;
@@ -81,10 +81,10 @@
         .rank {
             font-size: 20px;
             color: #00ffff;
-            text-align: center;
+            text-align: left;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             gap: 6px;
         }
 
@@ -185,7 +185,6 @@
                 <div>POS</div>
                 <div>JOGADOR</div>
                 <div>SCORE</div>
-                <div>ALTURA</div>
                 <div>DATA</div>
             </div>
             <div id="ranking-list">
@@ -278,7 +277,6 @@
                         <div class="rank ${rankClass}">${rankIcon}</div>
                         <div class="player-name">${pName}</div>
                         <div class="score">${data.score}</div>
-                        <div class="score">${heightText}</div>
                         <div class="date">${date}</div>
                     `;
 

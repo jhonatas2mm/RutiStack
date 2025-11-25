@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Sprite Test</title>
+</head>
+
+<body>
+    <h1>Sprite Loading Test</h1>
+    <div id="results"></div>
+    <script>
+        const results = document.getElementById('results');
+
+        // Test loading sprites
+        const testSprites = [
+            'assets/sprites/normal/1.png',
+            'assets/sprites/normal/2.png',
+            'assets/sprites/heavy/goal_square.png',
+            'assets/sprites/retangulo/1.png',
+            'assets/sprites/ice/1.png'
+        ];
+
+        testSprites.forEach(src => {
+            const img = new Image();
+            img.onload = () => {
+                results.innerHTML += `<p style="color: green;">✓ Loaded: ${src}</p>`;
+                const preview = new Image();
+                preview.src = src;
+                preview.style.width = '100px';
+                preview.style.imageRendering = 'pixelated';
+                results.appendChild(preview);
+            };
+            img.onerror = () => {
+                results.innerHTML += `<p style="color: red;">✗ Failed: ${src}</p>`;
+            };
+            img.src = src;
+        });
+    </script>
+</body>
+
+</html>
