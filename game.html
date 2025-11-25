@@ -11,13 +11,26 @@
         body {
             margin: 0;
             padding: 0;
-            background:
-                url('assets/background/bg-game.png') center top / 320px auto repeat,
-                var(--bg-grad);
+            background: var(--bg-grad);
             font-family: 'Press Start 2P', cursive;
             overflow: hidden;
             color: white;
             user-select: none;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('assets/background/bg-game.png') center top / 100% auto repeat-y;
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 0;
+            mix-blend-mode: overlay;
         }
 
         :root {
@@ -30,7 +43,6 @@
             height: 100%;
             margin: 0;
             padding: 0;
-            background: var(--bg-grad);
         }
 
         #game-container {
@@ -807,7 +819,6 @@
             50% {
                 transform: scale(1.5);
                 color: #ffd700;
-                text-shadow: 0 0 20px #ffd700;
             }
 
             100% {
@@ -831,7 +842,10 @@
 
     <!-- Loading Screen -->
     <div id="loading-screen"
-        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(180deg, #cfe9e3 0%, #a2d7e6 50%, #8bb6d9 100%); animation: loading-gradient-cycle 6s ease-in-out infinite alternate; background-size: 100% 100%; display: flex; justify-content: center; align-items: center; z-index: 99999; flex-direction: column; gap: 30px;">
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background: linear-gradient(180deg, #cfe9e3 0%, #a2d7e6 50%, #8bb6d9 100%);
+        animation: loading-gradient-cycle 2s ease-in-out infinite alternate; 
+        display: flex; justify-content: center; align-items: center; z-index: 99999; flex-direction: column; gap: 30px;">
         <div
             style="background: none; padding: 40px; display: flex; flex-direction: column; align-items: center; gap: 30px;">
             <img src="assets/sprites/normal/1.png" alt="Loading"
@@ -843,6 +857,20 @@
     </div>
 
     <style>
+        #loading-screen::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('assets/background/bg-game.png') center top / 100% auto repeat-y;
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 0;
+            mix-blend-mode: overlay;
+        }
+
         @keyframes loading-gradient-cycle {
             0% {
                 background: linear-gradient(180deg, #cfe9e3 0%, #a2d7e6 50%, #8bb6d9 100%);
@@ -893,7 +921,8 @@
         </button>
         <button id="exit-btn"
             style="padding: 8px 14px; font-size: 10px; background: #fff; border: 4px solid #fff; color: #000; box-shadow: 4px 4px 0px #000; font-family: 'Press Start 2P'; cursor: pointer; text-transform: uppercase;"
-            onclick="window.location.href='index.html'">SAIR <span style="font-size: 8px; opacity: 0.7;">[ESC]</span></button>
+            onclick="window.location.href='index.html'">SAIR <span
+                style="font-size: 8px; opacity: 0.7;">[ESC]</span></button>
     </div>
 
     <!-- Start Screen -->
@@ -1073,6 +1102,7 @@
         let rankingLines = []; // {y, gfx, label, passed}
         let sessionBestY = sessionStorage.getItem('sessionBestY') ? parseFloat(sessionStorage.getItem('sessionBestY')) : null; // Stored best from previous games
         let currentGameMinY = null; // Track best height of CURRENT game
+        let finalGameHeight = null; // Final height when game ends (Y position)
         let craneSpeed = 2;
         const CRANE_Y = -50; // Absolute top (visual offset handled in update)
         let playerName = 'JOG'; // Default player name
@@ -1371,15 +1401,17 @@
             }
             currentBgPalette = lerpPalette(prevBgPalette, targetPalette, t);
             const palette = currentBgPalette;
-            const { width, height } = scene.scale;
 
-            // Update DOM gradient fallback (ensures visible background even if Phaser texture fails)
+            // Update DOM gradient (This is what we see through the transparent canvas)
             const domBg = document.getElementById('bg-gradient-layer');
             if (domBg) {
                 domBg.style.background = `linear-gradient(180deg, ${palette.top} 0%, ${palette.mid} 50%, ${palette.bottom} 100%)`;
             }
             document.documentElement.style.setProperty('--bg-grad', `linear-gradient(180deg, ${palette.top} 0%, ${palette.mid} 50%, ${palette.bottom} 100%)`);
 
+            // PHASER BACKGROUND REMOVED to allow CSS background to show
+            /*
+            const { width, height } = scene.scale;
             // Create gradient texture via HTML canvas (works in WebGL and Canvas)
             const canvas = document.createElement('canvas');
             const dpr = window.devicePixelRatio || 1;
@@ -1411,6 +1443,7 @@
                 background.setScrollFactor(0);
                 background.setDepth(-100);
             }
+            */
 
             currentBgPhase = phase;
         }
@@ -1445,12 +1478,15 @@
                 snap.forEach(docSnap => {
                     const data = docSnap.data();
                     const bestHeight = data.bestHeight !== undefined ? Number(data.bestHeight) : NaN;
+                    const playerScore = data.score !== undefined ? Number(data.score) : 0;
                     entries.push({
                         name: data.playerName || data.name || 'TOP',
-                        bestHeight
+                        bestHeight: bestHeight,
+                        score: playerScore
                     });
                 });
 
+                // Use actual bestHeight (Y position) from database
                 const validHeights = entries
                     .map(e => e.bestHeight)
                     .filter(v => Number.isFinite(v));
@@ -2588,6 +2624,9 @@
                     }
                 }
 
+                // Store final height for saving to database
+                finalGameHeight = currentGameMinY;
+
                 const finalScore = score; // Use global score variable
                 logEvent('GAME_OVER', { score: finalScore });
                 const scoreElement = document.getElementById('final-score');
@@ -2810,12 +2849,29 @@
                 const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
                 const names = (rankingTopNames && rankingTopNames.length) ? rankingTopNames : [];
 
+                // Ensure minimum spacing between lines (80px)
+                const minSpacing = 80;
+                const adjustedHeights = [];
+
                 rankingHeights.slice(0, desiredLines).forEach((y, idx) => {
+                    let adjustedY = y;
+
+                    // Check if this line is too close to previous lines
+                    for (let i = 0; i < adjustedHeights.length; i++) {
+                        const prevY = adjustedHeights[i];
+                        if (Math.abs(adjustedY - prevY) < minSpacing) {
+                            // Move this line down to maintain spacing
+                            adjustedY = prevY + minSpacing;
+                        }
+                    }
+
+                    adjustedHeights.push(adjustedY);
+
                     const bgColor = medalColors[idx] || '#00ffff';
                     const playerName = names[idx] && names[idx].name ? names[idx].name : `TOP ${idx + 1}`;
 
                     rankingLines.push({
-                        y,
+                        y: adjustedY,
                         idx,
                         gfx: scene.add.graphics(),
                         bgColor, // Store for line drawing
@@ -2857,8 +2913,9 @@
 
                 const cam = scene.cameras.main;
                 const screenY = y - cam.scrollY;
-                // CHANGED TO LEFT SIDE (10px)
-                line.label.setPosition(10, screenY - 10);
+                // Center label vertically on the line
+                const labelHeight = line.label.height || 20; // Approximate height
+                line.label.setPosition(10, screenY - (labelHeight / 2));
 
                 // Pass notification
                 if (!line.passed && currentGameMinY !== null && currentGameMinY < y) {
@@ -3046,6 +3103,7 @@
                     await addDoc(collection(db, "scores"), {
                         playerName: playerName,
                         score: score,
+                        bestHeight: finalGameHeight, // Save the exact Y position where player died
                         timestamp: new Date(), // Firestore will store as timestamp
                         gameLog: gameLog // Anti-hack data
                     });

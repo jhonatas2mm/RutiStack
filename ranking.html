@@ -14,17 +14,18 @@
             /* background-image removed for solid color */
             font-family: 'Press Start 2P', cursive;
             color: white;
-            overflow-x: hidden;
+            overflow: hidden;
         }
 
         .container {
             max-width: 800px;
             margin: 0 auto;
             padding: 40px 20px;
-            min-height: 100vh;
+            height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
+            overflow: hidden;
         }
 
         .header {
@@ -64,6 +65,26 @@
             border-radius: 0;
             margin-bottom: 10px;
             font-size: 12px;
+        }
+
+        #ranking-list {
+            max-height: 60vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 10px;
+        }
+
+        #ranking-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #ranking-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        #ranking-list::-webkit-scrollbar-thumb {
+            background: #00ffff;
+            border-radius: 4px;
         }
 
         .ranking-item {
@@ -283,10 +304,12 @@
                     rankingList.appendChild(item);
                     position++;
 
+                    // Save bestHeight (actual Y position) for game reference lines
                     const heightValue = data.bestHeight !== undefined ? Number(data.bestHeight) : NaN;
+                    const scoreValue = data.score !== undefined ? Number(data.score) : 0;
                     if (Number.isFinite(heightValue)) {
                         topHeights.push(heightValue);
-                        topNames.push({ name: pName, bestHeight: heightValue });
+                        topNames.push({ name: pName, bestHeight: heightValue, score: scoreValue });
                     }
                 });
 
