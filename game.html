@@ -886,6 +886,10 @@
         <button id="exit-btn"
             style="padding: 8px 14px; font-size: 10px; background: #fff; border: 4px solid #fff; color: #000; box-shadow: 4px 4px 0px #000; font-family: 'Press Start 2P'; cursor: pointer; text-transform: uppercase;"
             onclick="window.location.href='index.html'">SAIR</button>
+        <button id="reset-game-btn"
+            style="padding: 8px 14px; font-size: 10px; background: #fff; border: 4px solid #fff; color: #000; box-shadow: 4px 4px 0px #000; font-family: 'Press Start 2P'; cursor: pointer; text-transform: uppercase;">
+            RESET <span style="font-size: 8px; opacity: 0.7;">[R]</span>
+        </button>
     </div>
 
     <!-- Start Screen -->
@@ -2143,7 +2147,19 @@
             isDropping = true;
             triggerLever(scene);
             // playSound(scene, 'sfx_drop', { volume: 0.8 }); // Asset missing
-            logEvent('DROP_BOX', { x: crane.x, y: crane.y, angle: currentBox.rotation });
+
+            // Anti-Hack Logging
+            const currentAngle = currentBox.rotation;
+            // swingTime is the argument to Math.sin() for the swing
+            // We log it to see if the user always drops at the exact same phase (bot behavior)
+            logEvent('DROP_BOX', {
+                x: crane.x,
+                y: crane.y,
+                angle: currentAngle,
+                swingTime: swingTime,
+                swingPhase: swingTime % (Math.PI * 2), // Normalize phase
+                clickDelta: Date.now() - lastMouseClickTs
+            });
 
             currentBox.isCarried = false;
             currentBox.setIgnoreGravity(false);
@@ -2250,6 +2266,7 @@
             currentGameMinY = null; // Reset current game tracking
             updateLivesUI();
             craneSpeed = gameConfig.baseSpeed;
+            gameLog = []; // Reset anti-hack log
 
             // Draw record line from STORAGE (do not update it during game)
             if (game) {
@@ -3197,13 +3214,25 @@
 
     <script>
         // Sound Toggle Logic
+        // Sound Toggle Logic
         const soundBtn = document.getElementById('sound-btn');
         const soundIcon = document.getElementById('sound-icon');
-        let isMuted = false;
+
+        // Initialize from localStorage
+        let isMuted = localStorage.getItem('isMuted') === 'true';
+        soundEnabled = !isMuted;
+
+        // Apply initial state
+        if (isMuted) {
+            soundIcon.src = 'assets/sprites/icons/no-audio.svg';
+        } else {
+            soundIcon.src = 'assets/sprites/icons/audio.svg';
+        }
 
         soundBtn.addEventListener('click', () => {
             isMuted = !isMuted;
             soundEnabled = !isMuted;
+            localStorage.setItem('isMuted', isMuted); // Save state
 
             // Update icon
             if (isMuted) {
@@ -3216,6 +3245,30 @@
                 if (musicBg && musicBg.setMute) {
                     musicBg.setMute(false);
                 }
+            }
+        });
+
+        // Reset Button Logic
+        const resetGameBtn = document.getElementById('reset-game-btn');
+        if (resetGameBtn) {
+            resetGameBtn.addEventListener('click', () => {
+                location.reload();
+            });
+        }
+
+        // Global 'R' key for reset (only if not in input)
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+
+            // If 'R' is pressed and game is active (or even if not, as requested "reset")
+            // Note: Existing code uses 'R' for Ranking in Game Over screen. 
+            // We should prioritize the Reset function if the user explicitly asked for it on the game screen.
+            // However, to avoid conflict, let's check if Game Over is visible.
+            const gameOverScreen = document.getElementById('game-over-screen');
+            const gameOverVisible = gameOverScreen && !gameOverScreen.classList.contains('hidden');
+
+            if (e.key.toLowerCase() === 'r' && !gameOverVisible) {
+                location.reload();
             }
         });
 
