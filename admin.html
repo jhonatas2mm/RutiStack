@@ -416,6 +416,12 @@
             transition: transform 0.1s;
         }
 
+        .login-btn.exit {
+            margin-top: 10px;
+            background: #ff4444;
+            color: #fff;
+        }
+
         .login-btn:active {
             transform: scale(0.98);
         }
@@ -438,6 +444,7 @@
             <input type="password" id="admin-pass" class="login-input" placeholder="SENHA"
                 onkeyup="if(event.key==='Enter') login()">
             <button class="login-btn" onclick="login()">Entrar</button>
+            <button class="login-btn exit" onclick="window.location.href='index.html'">Sair</button>
             <div id="login-error" class="error-msg">SENHA INCORRETA</div>
         </div>
     </div>

@@ -4,14 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>O Equilíbrio da Coruja</title>
+    <title>RutiStack - Jogo</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <style>
         body {
             margin: 0;
             padding: 0;
-            background-color: #0f0f1e;
+            background:
+                url('assets/background/bg-game.png') center top / 320px auto repeat,
+                var(--bg-grad);
             font-family: 'Press Start 2P', cursive;
             overflow: hidden;
             color: white;
@@ -36,9 +38,9 @@
             height: 100vh;
             display: block;
             position: relative;
-            z-index: 1;
-            /* Below the game-over modal */
-            background: var(--bg-grad);
+            z-index: 2;
+            /* Canvas sits above; backgrounds handled by layers */
+            background: transparent;
         }
 
         /* Ensure Phaser canvas stays transparent so gradient shows through */
@@ -98,16 +100,10 @@
             }
         }
 
-        #bg-gradient-layer {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            pointer-events: none;
-            background: var(--bg-grad);
-            /* will be updated dynamically */
+        /* Layer divs disabled; background handled on body */
+        #bg-gradient-layer,
+        #bg-pattern-layer {
+            display: none;
         }
 
         .pixel-box {
@@ -336,15 +332,20 @@
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
-            width: 100% !important;
-            height: 100% !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            padding: 20px;
+            box-sizing: border-box;
             background: linear-gradient(180deg, #cfe9e3 0%, #a2d7e6 50%, #8bb6d9 100%);
             animation: loading-gradient-cycle 3s ease-in-out infinite alternate;
             background-size: 100% 100%;
+            display: flex;
+            flex-direction: column;
             justify-content: center !important;
             align-items: center !important;
             z-index: 10000 !important;
             pointer-events: auto;
+            overflow: hidden;
         }
 
         .game-over-content {
@@ -352,11 +353,12 @@
             border: none;
             padding: 20px;
             text-align: center;
-            max-width: 600px;
-            width: 90%;
+            width: min(92vw, 720px);
+            max-width: 720px;
             height: auto;
-            max-height: 80vh;
-            overflow-y: auto;
+            max-height: 90vh;
+            overflow: visible;
+            box-sizing: border-box;
             position: relative;
             z-index: 100 !important;
         }
@@ -824,6 +826,8 @@
 
     <!-- Dynamic Gradient Layer (behind the game canvas) -->
     <div id="bg-gradient-layer"></div>
+    <!-- Pattern Overlay -->
+    <div id="bg-pattern-layer"></div>
 
     <!-- Loading Screen -->
     <div id="loading-screen"
@@ -883,13 +887,13 @@
             style="padding: 8px 14px; font-size: 10px; background: #fff; border: 4px solid #fff; color: #000; box-shadow: 4px 4px 0px #000; font-family: 'Press Start 2P'; cursor: pointer; text-transform: uppercase;">
             GOD
         </button>
-        <button id="exit-btn"
-            style="padding: 8px 14px; font-size: 10px; background: #fff; border: 4px solid #fff; color: #000; box-shadow: 4px 4px 0px #000; font-family: 'Press Start 2P'; cursor: pointer; text-transform: uppercase;"
-            onclick="window.location.href='index.html'">SAIR</button>
         <button id="reset-game-btn"
             style="padding: 8px 14px; font-size: 10px; background: #fff; border: 4px solid #fff; color: #000; box-shadow: 4px 4px 0px #000; font-family: 'Press Start 2P'; cursor: pointer; text-transform: uppercase;">
             RESET <span style="font-size: 8px; opacity: 0.7;">[R]</span>
         </button>
+        <button id="exit-btn"
+            style="padding: 8px 14px; font-size: 10px; background: #fff; border: 4px solid #fff; color: #000; box-shadow: 4px 4px 0px #000; font-family: 'Press Start 2P'; cursor: pointer; text-transform: uppercase;"
+            onclick="window.location.href='index.html'">SAIR <span style="font-size: 8px; opacity: 0.7;">[ESC]</span></button>
     </div>
 
     <!-- Start Screen -->
@@ -903,7 +907,7 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
         // --- FIREBASE CONFIGURATION ---
@@ -1100,6 +1104,7 @@
 
         let lastMouseClickTs = Date.now();
         let rankingHeights = [];
+        let rankingTopNames = [];
 
         // Box Configuration (Data-Driven)
         // Box Configuration (Data-Driven)
@@ -1216,9 +1221,9 @@
 
         // Background palettes: calm pastels -> mid vibrance -> hard/red
         const backgroundPalettes = [
-            { id: 'calm', top: '#cfe9e3', mid: '#a2d7e6', bottom: '#8bb6d9' },       // gentle teal/blue
-            { id: 'mid', top: '#c9d4ff', mid: '#f1c6ff', bottom: '#ffcad4' },        // dreamy lilac/peach
-            { id: 'hard', top: '#ffcba4', mid: '#ff9a9e', bottom: '#ff5f6d' }        // vibrant warm/red
+            { id: 'calm', top: '#d9f1ff', mid: '#a6d4ff', bottom: '#3a5b94' },   // brighter top, darker base
+            { id: 'mid', top: '#f4e4ff', mid: '#d8b7ff', bottom: '#7b3f79' },    // lilac/purple with dark base
+            { id: 'hard', top: '#ffe3c4', mid: '#ff9a9e', bottom: '#7a1f2c' }    // warm with deeper red base
         ];
 
         let ropeGraphics;
@@ -1233,7 +1238,15 @@
 
         // --- AUDIO SYSTEM ---
         let musicBg;
-        let soundEnabled = true;
+        let isMuted = localStorage.getItem('isMuted') === 'true';
+        if (localStorage.getItem('isMuted') === null) {
+            isMuted = false; // default: som ligado na primeira visita
+        }
+        let soundEnabled = !isMuted;
+
+        function getActiveScene() {
+            return (game && game.scene && game.scene.scenes && game.scene.scenes[0]) ? game.scene.scenes[0] : null;
+        }
 
         function playSound(scene, key, config = {}) {
             if (!soundEnabled) return;
@@ -1244,17 +1257,60 @@
             }
         }
 
+        function applyMuteState(muted, scene = null) {
+            soundEnabled = !muted;
+            if (!scene && game && game.scene && game.scene.scenes.length) {
+                scene = game.scene.scenes[0];
+            }
+
+            if (scene && scene.sound) {
+                const sm = scene.sound;
+                if (typeof sm.setMute === 'function') {
+                    sm.setMute(muted);
+                } else {
+                    sm.mute = muted;
+                }
+                sm.volume = muted ? 0 : 1;
+                if (sm.context && sm.context.state === 'suspended' && !muted) {
+                    sm.context.resume().catch(() => { });
+                }
+            }
+
+            if (musicBg) {
+                musicBg.setMute(muted);
+                if (!muted && isGameActive && !musicBg.isPlaying) {
+                    musicBg.play();
+                }
+            }
+        }
+
         function initAudio(scene) {
+            if (!scene) return;
+            applyMuteState(isMuted, scene);
             if (!musicBg) {
                 try {
-                    musicBg = scene.sound.add('music_bg', { loop: true, volume: 0.25 });
-                    if (isGameActive) {
+                    musicBg = scene.sound.add('music_bg', { loop: true, volume: 0.18, mute: isMuted });
+                    if (isGameActive && !isMuted) {
                         musicBg.play();
                     }
                 } catch (e) {
                     console.warn('Music init failed:', e);
                 }
             }
+        }
+
+        // Ensure audio context gets unlocked on first user gesture
+        let audioUnlocked = false;
+        function unlockAudioContext() {
+            const scene = getActiveScene();
+            if (scene && scene.sound && scene.sound.context && scene.sound.context.state === 'suspended') {
+                scene.sound.context.resume().catch(() => { });
+            }
+            initAudio(scene);
+            updateSoundUI();
+            audioUnlocked = true;
+            document.removeEventListener('pointerdown', unlockAudioContext);
+            document.removeEventListener('keydown', unlockAudioContext);
         }
 
         function blendHex(c1, c2, t) {
@@ -1378,6 +1434,48 @@
             updateBackgroundGradient(scene);
         }
 
+        async function refreshRankingHeightsFromRemote(scene = null) {
+            if (!isFirebaseReady) return;
+            try {
+                const scoresRef = collection(db, 'scores');
+                const q = query(scoresRef, orderBy('score', 'desc'), limit(10));
+                const snap = await getDocs(q);
+                const entries = [];
+
+                snap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const bestHeight = data.bestHeight !== undefined ? Number(data.bestHeight) : NaN;
+                    entries.push({
+                        name: data.playerName || data.name || 'TOP',
+                        bestHeight
+                    });
+                });
+
+                const validHeights = entries
+                    .map(e => e.bestHeight)
+                    .filter(v => Number.isFinite(v));
+
+                if (validHeights.length > 0) {
+                    rankingHeights = validHeights.slice(0, 3);
+                    localStorage.setItem('rankingBestHeights', JSON.stringify(rankingHeights));
+                }
+
+                if (entries.length > 0) {
+                    rankingTopNames = entries.slice(0, 3);
+                    localStorage.setItem('rankingTopNames', JSON.stringify(rankingTopNames));
+                }
+
+                // Force rebuild of lines on next frame
+                rankingLines.forEach(line => {
+                    if (line.gfx) line.gfx.destroy();
+                    if (line.label) line.label.destroy();
+                });
+                rankingLines = [];
+            } catch (e) {
+                console.error('Erro ao carregar alturas do ranking:', e);
+            }
+        }
+
         function initGame() {
             if (game) return;
             game = new Phaser.Game(config);
@@ -1397,14 +1495,17 @@
             // Load ranking heights (optional, from localStorage)
             try {
                 rankingHeights = JSON.parse(localStorage.getItem('rankingBestHeights') || '[]')
-                    .filter(v => typeof v === 'number');
+                    .map(v => Number(v))
+                    .filter(v => Number.isFinite(v));
             } catch (e) {
-                rankingHeights = new Array(5).fill(0);
-                localStorage.setItem('rankingBestHeights', JSON.stringify(rankingHeights));
+                rankingHeights = [];
             }
-            if (rankingHeights.length === 0) {
-                rankingHeights = new Array(5).fill(0); // default placeholders
-                localStorage.setItem('rankingBestHeights', JSON.stringify(rankingHeights));
+
+            try {
+                rankingTopNames = JSON.parse(localStorage.getItem('rankingTopNames') || '[]')
+                    .filter(entry => entry && typeof entry.name === 'string');
+            } catch (e) {
+                rankingTopNames = [];
             }
 
             // God button listener (set up once DOM is ready)
@@ -1559,6 +1660,8 @@
 
         function create() {
             const { width, height } = this.scale;
+            // Ensure Phaser sound respects persisted mute state
+            applyMuteState(isMuted, this);
 
             // DETECT AVAILABLE SPRITES
             // Check which textures actually loaded successfully
@@ -1831,6 +1934,10 @@
             updateRecordLine(this);
 
             isSceneReady = true;
+            updateSoundUI();
+
+            // Sync ranking markers with latest data
+            refreshRankingHeightsFromRemote(this);
 
             // Hide loading screen
             const loadingScreen = document.getElementById('loading-screen');
@@ -2689,19 +2796,23 @@
             }
 
             // Ranking lines (other players) - TOP 3 ONLY
-            if (rankingLines.length === 0 && rankingHeights.length > 0) {
-                // Load full ranking data with names
-                const rankingData = JSON.parse(localStorage.getItem('highScores') || '[]')
-                    .sort((a, b) => b.score - a.score)
-                    .slice(0, 3); // Only top 3
+            const desiredLines = Math.min(rankingHeights.length, 3);
+            if (rankingLines.length && rankingLines.length !== desiredLines) {
+                rankingLines.forEach(line => {
+                    if (line.gfx) line.gfx.destroy();
+                    if (line.label) line.label.destroy();
+                });
+                rankingLines = [];
+            }
 
-                rankingHeights.slice(0, 3).forEach((y, idx) => {
-                    // Medal colors: Gold, Silver, Bronze
-                    const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
-                    const bgColor = medalColors[idx];
+            if (rankingLines.length === 0 && desiredLines > 0) {
+                // Medal colors: Gold, Silver, Bronze
+                const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
+                const names = (rankingTopNames && rankingTopNames.length) ? rankingTopNames : [];
 
-                    // Get player name from ranking data
-                    const playerName = rankingData[idx] ? rankingData[idx].playerName : 'TOP';
+                rankingHeights.slice(0, desiredLines).forEach((y, idx) => {
+                    const bgColor = medalColors[idx] || '#00ffff';
+                    const playerName = names[idx] && names[idx].name ? names[idx].name : `TOP ${idx + 1}`;
 
                     rankingLines.push({
                         y,
@@ -2722,6 +2833,7 @@
             }
 
             rankingLines.forEach(line => {
+                line.y = typeof rankingHeights[line.idx] === 'number' ? rankingHeights[line.idx] : line.y;
                 const g = line.gfx;
                 g.clear();
                 const dash = 6;
@@ -2753,7 +2865,7 @@
                     line.passed = true;
                     // Play sound only for top 3
                     if (line.idx < 3) {
-                        playSound(scene, 'sfx_score_pass', { volume: 0.4 });
+                        playSound(scene, 'sfx_score_pass', { volume: 0.25 });
                     }
                     // CHANGED TO LEFT SIDE (20px) - VERTICALLY CENTERED
                     const ping = scene.add.text(20, scene.scale.height / 2 - 16, `PASSOU TOP${line.idx + 1}!`, {
@@ -3062,6 +3174,294 @@
                 gameOver();
             }, 500);
         }
+
+        // --- SOUND TOGGLE (in-game) ---
+        const soundBtn = document.getElementById('sound-btn');
+        const soundIcon = document.getElementById('sound-icon');
+
+        function updateSoundUI() {
+            const scene = getActiveScene();
+            if (!musicBg && scene) {
+                initAudio(scene);
+            }
+            if (isMuted) {
+                soundIcon.src = 'assets/sprites/icons/no-audio.svg';
+                if (musicBg && musicBg.setMute) {
+                    musicBg.setMute(true);
+                }
+            } else {
+                soundIcon.src = 'assets/sprites/icons/audio.svg';
+                if (musicBg && musicBg.setMute) {
+                    musicBg.setMute(false);
+                } else if (musicBg && !musicBg.isPlaying) {
+                    musicBg.play().catch(() => { });
+                }
+            }
+            applyMuteState(isMuted, scene);
+            localStorage.setItem('isMuted', isMuted);
+        }
+
+        // Apply initial state once scene exists or on load
+        updateSoundUI();
+
+        const focusableTopButtons = [];
+        if (soundBtn) focusableTopButtons.push(soundBtn);
+        const exitBtn = document.getElementById('exit-btn');
+        const resetBtn = document.getElementById('reset-game-btn');
+        const godBtnTop = document.getElementById('god-btn');
+        const dbgBtn = document.getElementById('debug-btn');
+        if (exitBtn) focusableTopButtons.push(exitBtn);
+        if (resetBtn) focusableTopButtons.push(resetBtn);
+        if (godBtnTop) focusableTopButtons.push(godBtnTop);
+        if (dbgBtn) focusableTopButtons.push(dbgBtn);
+
+        focusableTopButtons.forEach(btn => {
+            btn.style.pointerEvents = 'auto';
+            btn.tabIndex = -1;
+            btn.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                btn.blur();
+            });
+        });
+
+        if (soundBtn) {
+            soundBtn.addEventListener('click', () => {
+                isMuted = !isMuted;
+                const scene = getActiveScene();
+                if (scene && scene.sound && scene.sound.context && scene.sound.context.state === 'suspended') {
+                    scene.sound.context.resume().catch(() => { });
+                }
+                updateSoundUI();
+            });
+        }
+
+        // Unlock audio on first interaction (touch/click/keyboard)
+        document.addEventListener('pointerdown', unlockAudioContext, { once: true });
+        document.addEventListener('keydown', unlockAudioContext, { once: true });
+
+        // Global ESC to exit (unless typing in input)
+        document.addEventListener('keydown', (e) => {
+            if (e.target && e.target.tagName === 'INPUT') return;
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                window.location.href = 'index.html';
+            }
+        });
+
+        // Reset Button Logic
+        const resetGameBtn = document.getElementById('reset-game-btn');
+        if (resetGameBtn) {
+            resetGameBtn.addEventListener('click', () => {
+                location.reload();
+            });
+        }
+
+        // Global 'R' key for reset (only if not in input)
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+
+            const gameOverScreen = document.getElementById('game-over-screen');
+            const gameOverVisible = gameOverScreen && !gameOverScreen.classList.contains('hidden');
+
+            if (e.key.toLowerCase() === 'r' && !gameOverVisible) {
+                location.reload();
+            }
+        });
+
+        // Debug Sidebar Logic
+        const debugBtn = document.getElementById('debug-btn');
+        const debugSidebar = document.getElementById('debug-sidebar');
+        const closeDebugBtn = document.getElementById('close-debug-btn');
+
+        // Check if admin is logged in (session check)
+        const isAdminLoggedIn = sessionStorage.getItem('adminLoggedIn') === 'true';
+        if (isAdminLoggedIn) {
+            debugBtn.classList.remove('hidden');
+        }
+
+        // Hide God Mode button unless admin is logged in
+        const godBtn = document.getElementById('god-btn');
+        if (!isAdminLoggedIn && godBtn) {
+            godBtn.style.display = 'none';
+        }
+
+        // Inputs
+        const inputGravity = document.getElementById('debug-gravity');
+        const inputSpeed = document.getElementById('debug-speed');
+        const inputDifficulty = document.getElementById('debug-difficulty');
+        const inputFriction = document.getElementById('debug-friction');
+        const inputBounce = document.getElementById('debug-bounce');
+        const inputGoalChance = document.getElementById('debug-goal-chance');
+        const inputGoalDensity = document.getElementById('debug-goal-density');
+        const inputIceChance = document.getElementById('debug-ice-chance');
+        const inputIceFriction = document.getElementById('debug-ice-friction');
+
+        // Value Displays
+        const valGravity = document.getElementById('val-gravity');
+        const valSpeed = document.getElementById('val-speed');
+        const valDifficulty = document.getElementById('val-difficulty');
+        const valFriction = document.getElementById('val-friction');
+        const valBounce = document.getElementById('val-bounce');
+        const valGoalChance = document.getElementById('val-goal-chance');
+        const valGoalDensity = document.getElementById('val-goal-density');
+        const valIceChance = document.getElementById('val-ice-chance');
+        const valIceFriction = document.getElementById('val-ice-friction');
+
+        // Toggle Sidebar
+        debugBtn.addEventListener('click', () => {
+            debugSidebar.style.left = '0';
+            const gameContainer = document.getElementById('game-container');
+            if (gameContainer) {
+                gameContainer.style.transition = 'margin-left 0.3s ease, width 0.3s ease';
+                gameContainer.style.marginLeft = '300px';
+                gameContainer.style.width = 'calc(100% - 300px)';
+
+                setTimeout(() => {
+                    if (game) {
+                        game.scale.resize(gameContainer.clientWidth, gameContainer.clientHeight);
+                    }
+                }, 350);
+            }
+
+            if (typeof gameConfig !== 'undefined') {
+                inputGravity.value = gameConfig.gravity;
+                valGravity.innerText = gameConfig.gravity;
+
+                inputSpeed.value = gameConfig.baseSpeed;
+                valSpeed.innerText = gameConfig.baseSpeed;
+
+                inputDifficulty.value = gameConfig.difficultyMultiplier;
+                valDifficulty.innerText = gameConfig.difficultyMultiplier;
+
+                const goalType = boxTypes.find(t => t.category === 'goal');
+                if (goalType) {
+                    inputGoalChance.value = goalType.chance;
+                    valGoalChance.innerText = goalType.chance;
+                    const baseDensity = goalType.densityRange ? (goalType.densityRange[0] + goalType.densityRange[1]) / 2 : goalType.density || 0.07;
+                    inputGoalDensity.value = baseDensity;
+                    valGoalDensity.innerText = baseDensity.toFixed(3);
+                }
+
+                const iceType = boxTypes.find(t => t.category === 'ice');
+                if (iceType) {
+                    inputIceChance.value = iceType.chance;
+                    valIceChance.innerText = iceType.chance;
+                    inputIceFriction.value = iceType.friction;
+                    valIceFriction.innerText = iceType.friction.toFixed(3);
+                }
+            }
+        });
+
+        closeDebugBtn.addEventListener('click', () => {
+            debugSidebar.style.left = '-350px';
+            const gameContainer = document.getElementById('game-container');
+            if (gameContainer) {
+                gameContainer.style.marginLeft = '0';
+                gameContainer.style.width = '100%';
+
+                setTimeout(() => {
+                    if (game) {
+                        game.scale.resize(window.innerWidth, window.innerHeight);
+                    }
+                }, 350);
+            }
+        });
+
+        // Real-time Updates (UI Only)
+        inputGravity.addEventListener('input', (e) => { document.getElementById('val-gravity').innerText = e.target.value; });
+        inputSpeed.addEventListener('input', (e) => { document.getElementById('val-speed').innerText = e.target.value; });
+        inputDifficulty.addEventListener('input', (e) => { document.getElementById('val-difficulty').innerText = e.target.value; });
+        inputFriction.addEventListener('input', (e) => { document.getElementById('val-friction').innerText = e.target.value; });
+        inputBounce.addEventListener('input', (e) => { document.getElementById('val-bounce').innerText = e.target.value; });
+        inputGoalChance.addEventListener('input', (e) => { document.getElementById('val-goal-chance').innerText = e.target.value; });
+        inputGoalDensity.addEventListener('input', (e) => { document.getElementById('val-goal-density').innerText = parseFloat(e.target.value).toFixed(3); });
+        inputIceChance.addEventListener('input', (e) => { document.getElementById('val-ice-chance').innerText = e.target.value; });
+        inputIceFriction.addEventListener('input', (e) => { document.getElementById('val-ice-friction').innerText = parseFloat(e.target.value).toFixed(3); });
+
+        // Apply Config Logic
+        document.getElementById('apply-config-btn').addEventListener('click', () => {
+            if (typeof gameConfig !== 'undefined') {
+                gameConfig.gravity = parseFloat(inputGravity.value);
+                gameConfig.baseSpeed = parseFloat(inputSpeed.value);
+                gameConfig.difficultyMultiplier = parseFloat(inputDifficulty.value);
+                const goalChance = parseFloat(inputGoalChance.value);
+                const goalDensity = parseFloat(inputGoalDensity.value);
+                const iceChance = parseFloat(inputIceChance.value);
+                const iceFriction = parseFloat(inputIceFriction.value);
+
+                if (game) {
+                    const scene = game.scene.getScene('default') || game.scene.scenes[0];
+
+                    if (scene && scene.matter) {
+                        scene.matter.world.setGravity(0, gameConfig.gravity);
+                    }
+
+                    if (typeof craneSpeed !== 'undefined') {
+                        craneSpeed = gameConfig.baseSpeed + (score * gameConfig.difficultyMultiplier);
+                    }
+
+                    const friction = parseFloat(inputFriction.value);
+                    const bounce = parseFloat(inputBounce.value);
+                    updateBoxPhysics('friction', friction);
+                    updateBoxPhysics('bounce', bounce);
+
+                    boxTypes = boxTypes.map(t => {
+                        if (t.category === 'goal') {
+                            return {
+                                ...t,
+                                chance: goalChance,
+                                densityRange: [goalDensity * 0.9, goalDensity * 1.1]
+                            };
+                        } else if (t.category === 'ice') {
+                            return { ...t, chance: iceChance, friction: iceFriction };
+                        } else if (t.category === 'iceRect') {
+                            return { ...t, chance: iceChance, friction: iceFriction * 0.8 };
+                        }
+                        return t;
+                    });
+
+                    alert("Configurações Aplicadas com Sucesso!");
+                } else {
+                    console.error("Game instance not found!");
+                }
+            }
+        });
+
+        // Reset Config Logic
+        document.getElementById('reset-config-btn').addEventListener('click', () => {
+            inputGravity.value = 1; document.getElementById('val-gravity').innerText = "1";
+            inputSpeed.value = 2; document.getElementById('val-speed').innerText = "2";
+            inputDifficulty.value = 0.1; document.getElementById('val-difficulty').innerText = "0.1";
+            inputFriction.value = 0.5; document.getElementById('val-friction').innerText = "0.5";
+            inputBounce.value = 0.1; document.getElementById('val-bounce').innerText = "0.1";
+
+            document.getElementById('apply-config-btn').click();
+        });
+
+        // Responsive Resize Listener
+        window.addEventListener('resize', () => {
+            if (game) {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+
+                game.scale.resize(width, height);
+
+                if (game.scene.scenes[0]) {
+                    updateBackgroundGradient(game.scene.scenes[0], true);
+                }
+
+                if (mascotBody) {
+                    const isDesktop = width >= 768;
+                    isMascotVisible = isDesktop;
+                    mascotBody.setVisible(isDesktop);
+                    if (mascotLever) mascotLever.setVisible(isDesktop);
+
+                    if (isDesktop) {
+                        positionMascot(width, height);
+                    }
+                }
+            }
+        });
     </script>
 
     <!-- Game Over Screen - Placed at end for proper z-index stacking -->
@@ -3212,278 +3612,6 @@
         </div>
     </div>
 
-    <script>
-        // Sound Toggle Logic
-        // Sound Toggle Logic
-        const soundBtn = document.getElementById('sound-btn');
-        const soundIcon = document.getElementById('sound-icon');
-
-        // Initialize from localStorage
-        let isMuted = localStorage.getItem('isMuted') === 'true';
-        soundEnabled = !isMuted;
-
-        // Apply initial state
-        if (isMuted) {
-            soundIcon.src = 'assets/sprites/icons/no-audio.svg';
-        } else {
-            soundIcon.src = 'assets/sprites/icons/audio.svg';
-        }
-
-        soundBtn.addEventListener('click', () => {
-            isMuted = !isMuted;
-            soundEnabled = !isMuted;
-            localStorage.setItem('isMuted', isMuted); // Save state
-
-            // Update icon
-            if (isMuted) {
-                soundIcon.src = 'assets/sprites/icons/no-audio.svg';
-                if (musicBg && musicBg.setMute) {
-                    musicBg.setMute(true);
-                }
-            } else {
-                soundIcon.src = 'assets/sprites/icons/audio.svg';
-                if (musicBg && musicBg.setMute) {
-                    musicBg.setMute(false);
-                }
-            }
-        });
-
-        // Reset Button Logic
-        const resetGameBtn = document.getElementById('reset-game-btn');
-        if (resetGameBtn) {
-            resetGameBtn.addEventListener('click', () => {
-                location.reload();
-            });
-        }
-
-        // Global 'R' key for reset (only if not in input)
-        document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT') return;
-
-            // If 'R' is pressed and game is active (or even if not, as requested "reset")
-            // Note: Existing code uses 'R' for Ranking in Game Over screen. 
-            // We should prioritize the Reset function if the user explicitly asked for it on the game screen.
-            // However, to avoid conflict, let's check if Game Over is visible.
-            const gameOverScreen = document.getElementById('game-over-screen');
-            const gameOverVisible = gameOverScreen && !gameOverScreen.classList.contains('hidden');
-
-            if (e.key.toLowerCase() === 'r' && !gameOverVisible) {
-                location.reload();
-            }
-        });
-
-        // Debug Sidebar Logic
-        const debugBtn = document.getElementById('debug-btn');
-        const debugSidebar = document.getElementById('debug-sidebar');
-        const closeDebugBtn = document.getElementById('close-debug-btn');
-
-        // Check if admin is logged in (session check)
-        const isAdminLoggedIn = sessionStorage.getItem('adminLoggedIn') === 'true';
-        if (isAdminLoggedIn) {
-            debugBtn.classList.remove('hidden');
-        }
-
-        // Hide God Mode button unless admin is logged in
-        const godBtn = document.getElementById('god-btn');
-        if (!isAdminLoggedIn) {
-            godBtn.style.display = 'none';
-        }
-
-        // Inputs
-        const inputGravity = document.getElementById('debug-gravity');
-        const inputSpeed = document.getElementById('debug-speed');
-        const inputDifficulty = document.getElementById('debug-difficulty');
-        const inputFriction = document.getElementById('debug-friction');
-        const inputBounce = document.getElementById('debug-bounce');
-        const inputGoalChance = document.getElementById('debug-goal-chance');
-        const inputGoalDensity = document.getElementById('debug-goal-density');
-        const inputIceChance = document.getElementById('debug-ice-chance');
-        const inputIceFriction = document.getElementById('debug-ice-friction');
-
-        // Value Displays
-        const valGravity = document.getElementById('val-gravity');
-        const valSpeed = document.getElementById('val-speed');
-        const valDifficulty = document.getElementById('val-difficulty');
-        const valFriction = document.getElementById('val-friction');
-        const valBounce = document.getElementById('val-bounce');
-        const valGoalChance = document.getElementById('val-goal-chance');
-        const valGoalDensity = document.getElementById('val-goal-density');
-        const valIceChance = document.getElementById('val-ice-chance');
-        const valIceFriction = document.getElementById('val-ice-friction');
-
-        // Toggle Sidebar
-        debugBtn.addEventListener('click', () => {
-            debugSidebar.style.left = '0';
-            // Squeeze Game Content
-            const gameContainer = document.getElementById('game-container');
-            if (gameContainer) {
-                gameContainer.style.transition = 'margin-left 0.3s ease, width 0.3s ease';
-                gameContainer.style.marginLeft = '300px';
-                gameContainer.style.width = 'calc(100% - 300px)';
-
-                // Trigger Phaser Resize after transition
-                setTimeout(() => {
-                    if (game) {
-                        game.scale.resize(gameContainer.clientWidth, gameContainer.clientHeight);
-                    }
-                }, 350);
-            }
-
-            // Sync values with current game state
-            if (typeof gameConfig !== 'undefined') {
-                inputGravity.value = gameConfig.gravity;
-                valGravity.innerText = gameConfig.gravity;
-
-                inputSpeed.value = gameConfig.baseSpeed;
-                valSpeed.innerText = gameConfig.baseSpeed;
-
-                inputDifficulty.value = gameConfig.difficultyMultiplier;
-                valDifficulty.innerText = gameConfig.difficultyMultiplier;
-
-                const goalType = boxTypes.find(t => t.category === 'goal');
-                if (goalType) {
-                    inputGoalChance.value = goalType.chance;
-                    valGoalChance.innerText = goalType.chance;
-                    const baseDensity = goalType.densityRange ? (goalType.densityRange[0] + goalType.densityRange[1]) / 2 : goalType.density || 0.07;
-                    inputGoalDensity.value = baseDensity;
-                    valGoalDensity.innerText = baseDensity.toFixed(3);
-                }
-
-                const iceType = boxTypes.find(t => t.category === 'ice');
-                if (iceType) {
-                    inputIceChance.value = iceType.chance;
-                    valIceChance.innerText = iceType.chance;
-                    inputIceFriction.value = iceType.friction;
-                    valIceFriction.innerText = iceType.friction.toFixed(3);
-                }
-            }
-        });
-
-        closeDebugBtn.addEventListener('click', () => {
-            debugSidebar.style.left = '-350px';
-            // Reset Game Content Position
-            const gameContainer = document.getElementById('game-container');
-            if (gameContainer) {
-                gameContainer.style.marginLeft = '0';
-                gameContainer.style.width = '100%';
-
-                // Trigger Phaser Resize after transition
-                setTimeout(() => {
-                    if (game) {
-                        game.scale.resize(window.innerWidth, window.innerHeight);
-                    }
-                }, 350);
-            }
-        });
-
-        // Real-time Updates (UI Only)
-        inputGravity.addEventListener('input', (e) => { document.getElementById('val-gravity').innerText = e.target.value; });
-        inputSpeed.addEventListener('input', (e) => { document.getElementById('val-speed').innerText = e.target.value; });
-        inputDifficulty.addEventListener('input', (e) => { document.getElementById('val-difficulty').innerText = e.target.value; });
-        inputFriction.addEventListener('input', (e) => { document.getElementById('val-friction').innerText = e.target.value; });
-        inputBounce.addEventListener('input', (e) => { document.getElementById('val-bounce').innerText = e.target.value; });
-        inputGoalChance.addEventListener('input', (e) => { document.getElementById('val-goal-chance').innerText = e.target.value; });
-        inputGoalDensity.addEventListener('input', (e) => { document.getElementById('val-goal-density').innerText = parseFloat(e.target.value).toFixed(3); });
-        inputIceChance.addEventListener('input', (e) => { document.getElementById('val-ice-chance').innerText = e.target.value; });
-        inputIceFriction.addEventListener('input', (e) => { document.getElementById('val-ice-friction').innerText = parseFloat(e.target.value).toFixed(3); });
-
-        // Apply Config Logic
-        document.getElementById('apply-config-btn').addEventListener('click', () => {
-            // console.log("Applying config...");
-            if (typeof gameConfig !== 'undefined') {
-                gameConfig.gravity = parseFloat(inputGravity.value);
-                gameConfig.baseSpeed = parseFloat(inputSpeed.value);
-                gameConfig.difficultyMultiplier = parseFloat(inputDifficulty.value);
-                const goalChance = parseFloat(inputGoalChance.value);
-                const goalDensity = parseFloat(inputGoalDensity.value);
-                const iceChance = parseFloat(inputIceChance.value);
-                const iceFriction = parseFloat(inputIceFriction.value);
-
-                // Apply to Game
-                if (game) {
-                    // Try to get the running scene
-                    const scene = game.scene.getScene('default') || game.scene.scenes[0];
-
-                    if (scene && scene.matter) {
-                        scene.matter.world.setGravity(0, gameConfig.gravity);
-                        // console.log("Gravity applied:", gameConfig.gravity);
-                    }
-
-                    // Update Crane Speed
-                    if (typeof craneSpeed !== 'undefined') {
-                        craneSpeed = gameConfig.baseSpeed + (score * gameConfig.difficultyMultiplier);
-                    }
-
-                    // Update Box Physics
-                    const friction = parseFloat(inputFriction.value);
-                    const bounce = parseFloat(inputBounce.value);
-                    updateBoxPhysics('friction', friction);
-                    updateBoxPhysics('bounce', bounce);
-
-                    // Update goal boxes chance and density
-                    boxTypes = boxTypes.map(t => {
-                        if (t.category === 'goal') {
-                            return {
-                                ...t,
-                                chance: goalChance,
-                                densityRange: [goalDensity * 0.9, goalDensity * 1.1]
-                            };
-                        } else if (t.category === 'ice') {
-                            return { ...t, chance: iceChance, friction: iceFriction };
-                        } else if (t.category === 'iceRect') {
-                            return { ...t, chance: iceChance, friction: iceFriction * 0.8 };
-                        }
-                        return t;
-                    });
-
-                    alert("Configurações Aplicadas com Sucesso!");
-                } else {
-                    console.error("Game instance not found!");
-                }
-            }
-        });
-
-        // Reset Config Logic
-        document.getElementById('reset-config-btn').addEventListener('click', () => {
-            // Reset inputs to defaults
-            inputGravity.value = 1; document.getElementById('val-gravity').innerText = "1";
-            inputSpeed.value = 2; document.getElementById('val-speed').innerText = "2";
-            inputDifficulty.value = 0.1; document.getElementById('val-difficulty').innerText = "0.1";
-            inputFriction.value = 0.5; document.getElementById('val-friction').innerText = "0.5";
-            inputBounce.value = 0.1; document.getElementById('val-bounce').innerText = "0.1";
-
-            // Trigger Apply
-            document.getElementById('apply-config-btn').click();
-        });
-
-        // Responsive Resize Listener
-        window.addEventListener('resize', () => {
-            if (game) {
-                const width = window.innerWidth;
-                const height = window.innerHeight;
-
-                game.scale.resize(width, height);
-
-                // Update background size if needed
-                if (game.scene.scenes[0]) {
-                    updateBackgroundGradient(game.scene.scenes[0], true);
-                }
-
-                // Update Mascot Visibility & Position
-                if (mascotBody) {
-                    const isDesktop = width >= 768;
-                    isMascotVisible = isDesktop;
-                    mascotBody.setVisible(isDesktop);
-                    if (mascotLever) mascotLever.setVisible(isDesktop);
-
-                    if (isDesktop) {
-                        positionMascot(width, height);
-                    }
-                }
-            }
-        });
-
-    </script>
 </body>
 
 </html>

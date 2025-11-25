@@ -57,7 +57,7 @@
 
         .ranking-header {
             display: grid;
-            grid-template-columns: 80px 1fr 120px 140px;
+            grid-template-columns: 80px 1fr 100px 120px;
             gap: 20px;
             padding: 15px 0;
             background: none;
@@ -68,7 +68,7 @@
 
         .ranking-item {
             display: grid;
-            grid-template-columns: 80px 1fr 120px 140px;
+            grid-template-columns: 80px 1fr 100px 120px;
             gap: 20px;
             padding: 12px 0;
             background: none;
@@ -245,6 +245,8 @@
 
                 rankingList.innerHTML = '';
                 let position = 1;
+                const topHeights = [];
+                const topNames = [];
 
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
@@ -271,8 +273,6 @@
                     // Format date
                     const date = parsedDate ? parsedDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A';
 
-                    const heightText = data.bestHeight ? data.bestHeight : '-';
-
                     item.innerHTML = `
                         <div class="rank ${rankClass}">${rankIcon}</div>
                         <div class="player-name">${pName}</div>
@@ -282,7 +282,20 @@
 
                     rankingList.appendChild(item);
                     position++;
+
+                    const heightValue = data.bestHeight !== undefined ? Number(data.bestHeight) : NaN;
+                    if (Number.isFinite(heightValue)) {
+                        topHeights.push(heightValue);
+                        topNames.push({ name: pName, bestHeight: heightValue });
+                    }
                 });
+
+                if (topHeights.length > 0) {
+                    localStorage.setItem('rankingBestHeights', JSON.stringify(topHeights.slice(0, 3)));
+                }
+                if (topNames.length > 0) {
+                    localStorage.setItem('rankingTopNames', JSON.stringify(topNames.slice(0, 3)));
+                }
 
             } catch (error) {
                 console.error('Erro ao carregar ranking:', error);

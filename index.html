@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>O Equilíbrio da Coruja - Menu</title>
+    <title>RutiStack - Menu</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         body {
@@ -263,16 +263,26 @@
             }
         }
 
-        /* Sound Button */
-        #sound-btn-index {
+        /* Top Controls */
+        .top-controls {
             position: fixed;
             top: 20px;
             right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 1000;
+        }
+
+        /* Sound Button */
+        #sound-btn-index {
             background: transparent;
             border: none;
             padding: 8px;
             cursor: pointer;
-            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         #sound-btn-index img {
@@ -282,15 +292,23 @@
             filter: drop-shadow(3px 3px 0 #000);
         }
 
+        #sound-hint-index {
+            font-size: 10px;
+            font-family: 'Press Start 2P', cursive;
+            color: #fff;
+            text-shadow: 2px 2px 0 #000;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            opacity: 0.9;
+            white-space: nowrap;
+            display: inline-block;
+        }
+
         #config-btn-index {
-            position: fixed;
-            top: 20px;
-            right: 60px;
             background: transparent;
             border: none;
             padding: 8px;
             cursor: pointer;
-            z-index: 1000;
         }
 
         #config-btn-index img {
@@ -341,22 +359,30 @@
         </div>
     </div>
 
-    <!-- Sound Button -->
-    <button id="sound-btn-index">
-        <img id="sound-icon-index" src="assets/sprites/icons/audio.svg" alt="Sound">
-    </button>
+    <!-- Top Controls -->
+    <div class="top-controls">
+        <!-- Sound Button -->
+        <button id="sound-btn-index">
+            <img id="sound-icon-index" src="assets/sprites/icons/audio.svg" alt="Sound">
+            <span id="sound-hint-index">ATIVAR SOM</span>
+        </button>
 
-    <!-- Config Button -->
-    <button id="config-btn-index">
-        <img src="assets/sprites/icons/settgings.svg" alt="Config">
-    </button>
+        <!-- Config Button -->
+        <button id="config-btn-index">
+            <img src="assets/sprites/icons/settgings.svg" alt="Config">
+        </button>
+    </div>
 
 
 
     <script>
+        const soundHintIndex = document.getElementById('sound-hint-index');
         // --- AUDIO SYSTEM ---
         let backgroundMusic;
         let audioInitialized = false;
+        let isMutedIndex = localStorage.getItem('isMuted') === 'true';
+        let soundHintDismissed = localStorage.getItem('soundHintDismissed') === 'true';
+        let autoplayBlocked = false;
 
         function initAudio() {
             if (audioInitialized) return;
@@ -365,11 +391,22 @@
             backgroundMusic = new Audio('assets/audio/index_background.ogg');
             backgroundMusic.loop = true;
             backgroundMusic.volume = 0.5;
+            backgroundMusic.muted = isMutedIndex;
 
             // Try to play
-            backgroundMusic.play().catch(err => {
-                console.log('Audio autoplay blocked, waiting for user interaction');
-            });
+            if (!isMutedIndex) {
+                backgroundMusic.play().then(() => {
+                    soundHintDismissed = true;
+                    localStorage.setItem('soundHintDismissed', 'true');
+                    updateSoundHint();
+                }).catch(err => {
+                    autoplayBlocked = true;
+                    updateSoundHint();
+                    console.log('Audio autoplay blocked, waiting for user interaction');
+                });
+            } else {
+                updateSoundHint();
+            }
         }
 
         // Initialize audio on first user interaction
@@ -391,20 +428,44 @@
         // Sound Toggle Button Logic
         const soundBtnIndex = document.getElementById('sound-btn-index');
         const soundIconIndex = document.getElementById('sound-icon-index');
-        let isMutedIndex = false;
 
-        soundBtnIndex.addEventListener('click', () => {
-            isMutedIndex = !isMutedIndex;
+        function updateSoundHint() {
+            if (soundHintIndex) {
+                const shouldShow = !soundHintDismissed && (autoplayBlocked || (!audioInitialized && !isMutedIndex));
+                soundHintIndex.style.display = shouldShow ? 'inline-block' : 'none';
+            }
+        }
 
+        function applyMuteStateIndex() {
             if (isMutedIndex) {
                 soundIconIndex.src = 'assets/sprites/icons/no-audio.svg';
-                if (backgroundMusic) backgroundMusic.pause();
+                if (backgroundMusic) {
+                    backgroundMusic.muted = true;
+                    backgroundMusic.pause();
+                }
             } else {
                 soundIconIndex.src = 'assets/sprites/icons/audio.svg';
                 if (backgroundMusic) {
-                    backgroundMusic.play().catch(err => console.log('Play failed:', err));
+                    backgroundMusic.muted = false;
+                    backgroundMusic.play().then(() => {
+                        soundHintDismissed = true;
+                        localStorage.setItem('soundHintDismissed', 'true');
+                    }).catch(err => {
+                        autoplayBlocked = true;
+                    });
                 }
             }
+            localStorage.setItem('isMuted', isMutedIndex);
+            updateSoundHint();
+        }
+
+        // Apply initial icon/state on load
+        applyMuteStateIndex();
+
+        soundBtnIndex.addEventListener('click', () => {
+            isMutedIndex = !isMutedIndex;
+            if (!backgroundMusic) initAudio();
+            applyMuteStateIndex();
         });
 
         // Menu Logic
