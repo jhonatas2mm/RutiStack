@@ -128,32 +128,51 @@
 
         #lives-display {
             position: fixed;
-            top: 20px;
+            top: 12px;
             left: 50%;
             transform: translateX(-50%);
-            /* Moved to left */
             display: flex;
-            gap: 5px;
+            gap: 6px;
             z-index: 100;
             pointer-events: none;
+            align-items: center;
         }
 
         .heart-icon {
-            width: 24px;
-            height: 24px;
+            width: 22px;
+            height: 22px;
             image-rendering: pixelated;
         }
 
         #score-display {
             position: fixed;
-            top: 20px;
-            left: 20px;
+            top: 12px;
+            left: 16px;
             color: #fff;
             font-family: 'Press Start 2P', cursive;
-            font-size: 20px;
+            font-size: 19px;
             z-index: 100;
             text-shadow: 2px 2px 0 #000;
             pointer-events: none;
+        }
+
+        #top-right-buttons {
+            position: fixed;
+            top: 12px;
+            right: 20px;
+            z-index: 999;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        #top-right-buttons img {
+            width: 24px;
+            height: 24px;
+        }
+
+        .btn-label {
+            display: inline;
         }
 
         #height-display {
@@ -383,9 +402,9 @@
         #name-input-container {
             display: grid;
             grid-template-columns: repeat(8, minmax(0, 1fr));
-            column-gap: 18px;
-            row-gap: 0;
-            margin-bottom: 20px;
+            column-gap: 14px;
+            row-gap: 10px;
+            margin-bottom: 24px;
             justify-content: center;
             align-items: center;
             width: 100%;
@@ -394,8 +413,8 @@
         .input-group {
             display: grid;
             grid-template-columns: repeat(8, minmax(0, 1fr));
-            column-gap: 18px;
-            row-gap: 0;
+            column-gap: 14px;
+            row-gap: 10px;
             width: 100%;
         }
 
@@ -403,7 +422,7 @@
 
         .char-input {
             width: 100%;
-            height: 50px;
+            height: 52px;
             background: #fff;
             border: 4px solid #fff;
             color: #000;
@@ -809,6 +828,68 @@
             font-size: 0.8em;
             margin-left: 8px;
         }
+        @media (max-width: 768px) {
+            .shortcut-key {
+                display: none;
+            }
+            /* Mobile: smaller line labels and inputs */
+            .line-label-mobile {
+                font-size: 9px !important;
+            }
+            .char-input {
+                height: 44px;
+                font-size: 17px;
+            }
+            #score-display {
+                font-size: 13px;
+                top: 10px;
+                left: 12px;
+                line-height: 1;
+            }
+            .heart-icon {
+                width: 15px;
+                height: 15px;
+            }
+            #lives-display {
+                top: 10px;
+                right: 10px;
+                left: auto;
+                transform: none;
+                gap: 4px;
+            }
+            /* Move top bar to bottom on mobile */
+            #top-right-buttons {
+                top: auto;
+                bottom: 12px;
+                left: 12px;
+                right: 12px;
+                justify-content: space-between;
+                gap: 12px;
+            }
+            #top-right-buttons img {
+                width: 20px;
+                height: 20px;
+            }
+            #top-right-buttons .btn-label {
+                display: none;
+            }
+            #reset-game-btn,
+            #exit-btn {
+                padding: 4px !important;
+                border: none !important;
+                background: transparent !important;
+                box-shadow: none !important;
+                font-size: 0 !important;
+                min-width: 28px !important;
+                min-height: 28px !important;
+            }
+            #reset-game-btn img,
+            #exit-btn img {
+                width: 18px !important;
+                height: 18px !important;
+                filter: drop-shadow(3px 3px 0 #000);
+            }
+        }
 
         @keyframes score-milestone-anim {
             0% {
@@ -895,34 +976,25 @@
     </div>
 
     <!-- UI Elements -->
-    <div id="lives-display"></div>
     <div id="score-display">SCORE: 0</div>
+    <div id="lives-display"></div>
 
-    <!-- Top Buttons -->
-    <div id="top-right-buttons"
-        style="position: fixed; top: 20px; right: 20px; z-index: 999; display: flex; gap: 10px; align-items: center;">
+    <!-- Top Buttons (desktop) -->
+    <div id="top-right-buttons">
         <button id="sound-btn"
             style="background: transparent; border: none; padding: 8px; cursor: pointer; pointer-events: auto;">
-            <img id="sound-icon" src="assets/sprites/icons/audio.svg" alt="Sound" width="26" height="26"
+            <img id="sound-icon" src="assets/sprites/icons/audio.svg" alt="Sound" width="24" height="24"
                 style="image-rendering: pixelated; filter: drop-shadow(3px 3px 0 #000); display: block;">
-        </button>
-        <button id="debug-btn" class="hidden"
-            style="background: transparent; border: none; padding: 8px; cursor: pointer; pointer-events: auto;">
-            <img src="assets/sprites/icons/settgings.svg" alt="Config" width="26" height="26"
-                style="image-rendering: pixelated; filter: drop-shadow(3px 3px 0 #000); display: block;">
-        </button>
-        <button id="god-btn"
-            style="padding: 8px 14px; font-size: 10px; background: #fff; border: 4px solid #fff; color: #000; box-shadow: 4px 4px 0px #000; font-family: 'Press Start 2P'; cursor: pointer; text-transform: uppercase;">
-            GOD
         </button>
         <button id="reset-game-btn"
-            style="padding: 8px 14px; font-size: 10px; background: #fff; border: 4px solid #fff; color: #000; box-shadow: 4px 4px 0px #000; font-family: 'Press Start 2P'; cursor: pointer; text-transform: uppercase;">
-            RESET <span style="font-size: 8px; opacity: 0.7;">[R]</span>
+            style="background: #fff; border: 3px solid #fff; padding: 8px 10px; cursor: pointer; pointer-events: auto; box-shadow: 3px 3px 0 #000; font-family: 'Press Start 2P'; font-size: 10px; text-transform: uppercase;">
+            RESET <span class="shortcut-key" style="font-size: 8px; opacity: 0.7;">[R]</span>
         </button>
         <button id="exit-btn"
-            style="padding: 8px 14px; font-size: 10px; background: #fff; border: 4px solid #fff; color: #000; box-shadow: 4px 4px 0px #000; font-family: 'Press Start 2P'; cursor: pointer; text-transform: uppercase;"
-            onclick="window.location.href='index.html'">SAIR <span
-                style="font-size: 8px; opacity: 0.7;">[ESC]</span></button>
+            style="background: #fff; border: 3px solid #fff; padding: 8px 10px; cursor: pointer; pointer-events: auto; box-shadow: 3px 3px 0 #000; font-family: 'Press Start 2P'; font-size: 10px; text-transform: uppercase;"
+            onclick="window.location.href='index.html'">
+            SAIR <span class="shortcut-key" style="font-size: 8px; opacity: 0.7;">[ESC]</span>
+        </button>
     </div>
 
     <!-- Start Screen -->
@@ -960,7 +1032,7 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
                 isFirebaseReady = true;
-                console.log("Firebase initialized.");
+                // Firebase initialized
             } else {
                 console.warn("Firebase config missing. Running in offline mode.");
             }
@@ -992,11 +1064,11 @@
                 if (configSnap.exists()) {
                     const data = configSnap.data();
                     gameConfig = { ...gameConfig, ...data };
-                    console.log("Remote config loaded:", gameConfig);
+                // Remote config loaded
                 } else {
                     // Create default if not exists
                     await setDoc(configRef, gameConfig);
-                    console.log("Remote config created with defaults.");
+                    // Remote config created with defaults
                 }
 
                 // Load Box Types from Firestore
@@ -1007,16 +1079,15 @@
                     const data = boxesSnap.data();
                     if (data.types) {
                         // Can be used if needed in the future
-                        console.log("Remote box types available");
                     }
                 } else {
                     // Create default
                     await setDoc(boxesRef, { types: boxTypes });
-                    console.log("Remote box types created with defaults.");
+                    // Remote box types created with defaults
                 }
 
             } catch (e) {
-                console.warn("Could not load game config from Firebase:", e.message);
+                // Could not load game config from Firebase
                 // Continue with default config
             }
         }
@@ -1024,6 +1095,8 @@
 
 
         // --- PHASER GAME ---
+        const isMobile = window.innerWidth <= 768;
+
         const config = {
             type: Phaser.AUTO,
             width: window.innerWidth,
@@ -1427,6 +1500,32 @@
             updateBackgroundGradient(scene);
         }
 
+        // Map stored ranking entry to a Y position on screen.
+        function mapRankingEntryToY(entry, scene = null) {
+            if (!scene) scene = getActiveScene();
+            const h = scene && scene.scale ? scene.scale.height : (window.innerHeight || 900);
+            const base = h - 50; // perto da base/plataforma
+            let y = null;
+            if (entry && Number.isFinite(entry.bestHeightY)) {
+                y = entry.bestHeightY;
+            } else if (entry && Number.isFinite(entry.bestHeight)) {
+                y = base - entry.bestHeight; // converter métrica de altura para Y
+            }
+            if (!Number.isFinite(y)) y = base - 50;
+            const minY = 40;
+            const maxY = h - 120;
+            return Math.max(minY, Math.min(maxY, y));
+        }
+
+        // Compute a height metric (base - Y) for saving, consistent with mapRankingEntryToY
+        function computeHeightMetric(value, scene = null) {
+            if (!Number.isFinite(value)) return null;
+            if (!scene) scene = getActiveScene();
+            const h = scene && scene.scale ? scene.scale.height : (window.innerHeight || 900);
+            const base = h - 50;
+            return base - value;
+        }
+
         async function refreshRankingHeightsFromRemote(scene = null) {
             if (!isFirebaseReady) {
                 console.warn('Firebase not ready, skipping ranking data load');
@@ -1434,53 +1533,28 @@
             }
 
             try {
-                console.log("Fetching ranking from Firebase...");
                 const scoresRef = collection(db, 'scores');
-                // Order by bestHeight ASCENDING (smaller Y is higher up) - wait, Y increases downwards in Phaser?
-                // Actually, in this game, boxes stack UP, so Y decreases.
-                // But 'bestHeight' was saved as the Y position. Lower Y = Higher Stack.
-                // So we want the SMALLEST bestHeight (highest stack).
-                // Let's check how it's saved.
-
-                // Query: Get top scores (highest score first)
-                // We want to show lines for the best players.
-                // Usually ranking is by Score.
                 const q = query(scoresRef, orderBy('score', 'desc'), limit(10));
                 const snap = await getDocs(q);
                 const entries = [];
 
                 snap.forEach(docSnap => {
                     const data = docSnap.data();
-                    console.log("Rank entry:", data);
                     const bestHeight = data.bestHeight !== undefined ? Number(data.bestHeight) : NaN;
+                    const bestHeightY = data.bestHeightY !== undefined ? Number(data.bestHeightY) : null;
                     const playerScore = data.score !== undefined ? Number(data.score) : 0;
                     entries.push({
                         name: data.playerName || data.name || 'TOP',
                         bestHeight: bestHeight,
+                        bestHeightY: bestHeightY,
                         score: playerScore
                     });
                 });
 
-                // Use actual bestHeight (Y position) from database
-                const validHeights = entries
-                    .filter(e => Number.isFinite(e.bestHeight)) // Allow negative heights (Phaser Y goes up)
-                    .map(e => e.bestHeight);
-
-                console.log("Valid heights found:", validHeights);
-
-                if (validHeights.length > 0) {
-                    const mapHeight = (val) => {
-                        const targetScene = scene || getActiveScene();
-                        return bestHeightToY(targetScene, val);
-                    };
-                    rankingHeights = validHeights.slice(0, 3).map(mapHeight);
-                    rankingTopNames = entries.slice(0, 3);
-                    console.log("Ranking lines updated:", rankingHeights);
-                } else {
-                    console.log("No valid ranking heights found.");
-                    rankingHeights = [];
-                    rankingTopNames = [];
-                }
+                const topEntries = entries.slice(0, 3);
+                rankingTopNames = topEntries;
+                rankingHeights = topEntries.map(e => mapRankingEntryToY(e, scene || getActiveScene()));
+                console.log("Ranking heights (top3):", rankingHeights, "scores:", rankingTopNames.map(e => e.score));
 
                 // Force rebuild of lines on next frame
                 rankingLines.forEach(line => {
@@ -1494,23 +1568,15 @@
             }
         }
 
-        // Convert stored "height" to a world Y and clamp to the visible area.
-        function bestHeightToY(scene, value) {
-            if (!scene || !Number.isFinite(value)) return null;
+        // Convert stored "height metric" to a world Y and clamp to the visible area.
+        // Larger metric => higher on screen.
+        function bestHeightToY(scene, metricValue) {
+            if (!scene || !Number.isFinite(metricValue)) return null;
             const h = scene.scale.height;
-            const base = h - 80; // near platform
-            let y = value;
-
-            // If the value is huge (likely a stack height), invert from base.
-            if (value > h * 2 || value < -h * 2) {
-                y = base - value;
-            }
-
-            // Clamp to visible window
-            const minY = 40;
-            const maxY = h - 60;
-            y = Math.min(maxY, Math.max(minY, y));
-            return y;
+            const top = 120;
+            const bottom = h - 40;
+            // For mapping we need min/max; handled in updateRecordLine
+            return metricValue; // raw metric; mapping to screen happens elsewhere
         }
 
         function initGame() {
@@ -2226,13 +2292,17 @@
             const randomVariation = Phaser.Math.Between(0, variations - 1);
             const sizeOffset = randomVariation * increment;
 
-            const finalWidth = selectedType.width + sizeOffset;
+            let finalWidth = selectedType.width + sizeOffset;
             let finalHeight = selectedType.height + sizeOffset;
             // Keep rect proportion close to 421x241 when flagged by height preset 82
             if (selectedType.id.includes('rect')) {
                 const ratio = 241 / 421;
                 finalHeight = Math.round(finalWidth * ratio);
             }
+
+            const sizeScale = isMobile ? 0.9 : 1;
+            finalWidth = Math.round(finalWidth * sizeScale);
+            finalHeight = Math.round(finalHeight * sizeScale);
 
             box.setDisplaySize(finalWidth, finalHeight);
             // Physics Fix: Slightly smaller body to prevent edge snagging/floating
@@ -2845,9 +2915,14 @@
                 const minSpacing = 80;
                 const adjustedHeights = [];
 
-                rankingHeights.slice(0, desiredLines).forEach((rawY, idx) => {
-                    let adjustedY = bestHeightToY(scene, rawY);
-                    if (adjustedY === null) adjustedY = scene.scale.height - 80;
+                // Normalize heights to screen range for visibility
+                const sliceHeights = rankingHeights.slice(0, desiredLines);
+                const h = scene.scale.height;
+                const topClamp = 40;
+                const bottomClamp = h - 120;
+
+                sliceHeights.forEach((rawY, idx) => {
+                    let adjustedY = Number.isFinite(rawY) ? Math.max(topClamp, Math.min(bottomClamp, rawY)) : bottomClamp;
 
                     // Check if this line is too close to previous lines
                     for (let i = 0; i < adjustedHeights.length; i++) {
@@ -2862,20 +2937,23 @@
 
                     const bgColor = medalColors[idx] || '#00ffff';
                     const playerName = names[idx] && names[idx].name ? names[idx].name : `TOP ${idx + 1}`;
+                    const labelText = isMobile ? `TOP ${idx + 1}` : `TOP ${idx + 1} - ${playerName}`;
+                    const labelFont = isMobile ? '9px' : '10px';
 
                     rankingLines.push({
                         y: adjustedY,
                         idx,
-                        gfx: scene.add.graphics().setDepth(800),
+                        // Render behind boxes: low depth
+                        gfx: scene.add.graphics().setDepth(-20),
                         bgColor, // Store for line drawing
                         // CHANGED TO LEFT SIDE (10px)
-                        label: scene.add.text(10, 0, `TOP ${idx + 1} - ${playerName}`, {
+                        label: scene.add.text(10, 0, labelText, {
                             fontFamily: '"Press Start 2P"',
-                            fontSize: '10px',
+                            fontSize: labelFont,
                             color: '#000',
                             backgroundColor: bgColor,
                             padding: { x: 4, y: 3 }
-                        }).setDepth(900).setScrollFactor(0),
+                        }).setDepth(-15).setScrollFactor(0),
                         passed: false
                     });
                 });
@@ -2883,8 +2961,22 @@
 
             rankingLines.forEach(line => {
                 const rawY = rankingHeights[line.idx];
-                const mapped = bestHeightToY(scene, rawY);
-                line.y = Number.isFinite(mapped) ? mapped : line.y;
+                const h = scene.scale.height;
+                const topClamp = 40;
+                const bottomClamp = h - 120;
+                let mappedY = line.y;
+                if (Number.isFinite(rawY)) {
+                    mappedY = Math.max(topClamp, Math.min(bottomClamp, rawY));
+                }
+                if (!line._loggedOnce) {
+                    // Debug: line mapping
+                    // console.log('Ranking line mapping', { idx: line.idx, rawY, mappedY, screenHeight: h, targetScore: line.scoreTarget });
+                    line._loggedOnce = true;
+                }
+                line.y = mappedY;
+                line.scoreTarget = rankingTopNames[line.idx] && Number.isFinite(rankingTopNames[line.idx].score)
+                    ? rankingTopNames[line.idx].score
+                    : null;
                 const g = line.gfx;
                 g.clear();
                 const dash = 6;
@@ -2911,18 +3003,22 @@
                 // Center label vertically on the line
                 const labelHeight = line.label.height || 20; // Approximate height
                 line.label.setPosition(10, screenY - (labelHeight / 2));
+                line.label.setAlpha(1);
 
-                // Pass notification
-                if (!line.passed && currentGameMinY !== null && currentGameMinY < y) {
+                // Pass notification: compare by score (fallback to height if score missing)
+                const targetScore = line.scoreTarget;
+                const passedByScore = targetScore !== null && score > targetScore; // exige +1 além do score do topo
+                if (!line.passed && passedByScore) {
                     line.passed = true;
                     // Play sound only for top 3
                     if (line.idx < 3) {
                         playSound(scene, 'sfx_score_pass', { volume: 0.25 });
                     }
                     // CHANGED TO LEFT SIDE (20px) - VERTICALLY CENTERED
+                    const pingFont = line.idx === 0 ? '28px' : '20px';
                     const ping = scene.add.text(20, scene.scale.height / 2 - 16, `PASSOU TOP${line.idx + 1}!`, {
                         fontFamily: '"Press Start 2P"',
-                        fontSize: '20px',
+                        fontSize: pingFont,
                         color: '#ffffff',
                         backgroundColor: line.bgColor, // Use medal color
                         padding: { x: 6, y: 4 }
@@ -3076,13 +3172,24 @@
                 (document.getElementById('char7').value || '') +
                 (document.getElementById('char8').value || '');
 
-            if (nameFromInputs.length >= 3) {
-                playerName = nameFromInputs.toUpperCase();
-            }
+            const inputsTooShort = nameFromInputs.length < 3;
+            const inputs = Array.from(document.querySelectorAll('.char-input')).slice(0, 3);
 
-            // Silent fail if name is too short
-            if (playerName.length < 3) {
+            if (inputsTooShort) {
+                // Visual feedback: flash red border
+                inputs.forEach(inp => {
+                    inp.style.borderColor = '#ff0000';
+                    inp.style.animation = 'blink-focus 0.4s steps(2, start) 3';
+                });
+                setTimeout(() => {
+                    inputs.forEach(inp => {
+                        inp.style.borderColor = '#fff';
+                        inp.style.animation = '';
+                    });
+                }, 500);
                 return;
+            } else {
+                playerName = nameFromInputs.toUpperCase();
             }
 
             // UI Feedback: Saving state
@@ -3128,7 +3235,8 @@
                     await addDoc(collection(db, "scores"), {
                         playerName: playerName,
                         score: score,
-                        bestHeight: finalGameHeight, // Save the exact Y position where player died
+                        bestHeight: finalGameHeight !== null ? computeHeightMetric(finalGameHeight, getActiveScene()) : null, // altura (maior = mais alto)
+                        bestHeightY: finalGameHeight, // Y bruto
                         timestamp: new Date(), // Firestore will store as timestamp
                         gameLog: gameLog // Anti-hack data
                     });
@@ -3262,6 +3370,26 @@
         // --- SOUND TOGGLE (in-game) ---
         const soundBtn = document.getElementById('sound-btn');
         const soundIcon = document.getElementById('sound-icon');
+        const resetBtnTop = document.getElementById('reset-game-btn');
+        const exitBtnTop = document.getElementById('exit-btn');
+        const refreshIcon = 'assets/sprites/icons/refresh.svg';
+        const closeIcon = 'assets/sprites/icons/close.svg';
+
+        // Mobile: move top bar to bottom via CSS; Desktop: keep at top
+        const topBar = document.getElementById('top-right-buttons');
+        if (topBar) {
+            topBar.style.display = 'flex';
+        }
+
+        // Mobile icons for reset/exit
+        if (isMobile) {
+            if (resetBtnTop) {
+                resetBtnTop.innerHTML = `<img src="${refreshIcon}" alt="Reset" width="18" height="18" style="image-rendering: pixelated; filter: drop-shadow(3px 3px 0 #000); display: block;">`;
+            }
+            if (exitBtnTop) {
+                exitBtnTop.innerHTML = `<img src="${closeIcon}" alt="Sair" width="18" height="18" style="image-rendering: pixelated; filter: drop-shadow(3px 3px 0 #000); display: block;">`;
+            }
+        }
 
         function updateSoundUI() {
             const scene = getActiveScene();

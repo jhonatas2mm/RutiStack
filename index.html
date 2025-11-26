@@ -250,7 +250,7 @@
 
         @media (max-width: 480px) {
             .logo-text {
-                width: 85vw !important;
+                width: 70vw !important;
             }
 
             .char-owl {
@@ -316,6 +316,30 @@
             height: 26px;
             image-rendering: pixelated;
             filter: drop-shadow(3px 3px 0 #000);
+        }
+
+        @media (max-width: 768px) {
+            .top-controls {
+                left: 16px;
+                right: 16px;
+                justify-content: space-between;
+            }
+            #sound-btn-index {
+                padding: 6px;
+            }
+            #config-btn-index {
+                margin-left: auto;
+                padding: 6px;
+            }
+            .shortcut-key {
+                display: none;
+            }
+            .start-btn {
+                width: 100%;
+                max-width: 420px;
+                padding-left: 24px !important;
+                padding-right: 24px !important;
+            }
         }
     </style>
 </head>

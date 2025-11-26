@@ -33,6 +33,14 @@
             margin-bottom: 40px;
         }
 
+        .trophy {
+            width: 72px;
+            height: 72px;
+            image-rendering: pixelated;
+            display: block;
+            margin: 0 auto 12px auto;
+        }
+
         .title {
             font-size: 48px;
             background: linear-gradient(180deg, #00ffff, #0099ff);
@@ -117,7 +125,11 @@
         .date {
             font-size: 12px;
             color: rgba(255, 255, 255, 0.7);
-            text-align: right;
+            text-align: center;
+        }
+
+        .score {
+            text-align: center;
         }
 
         .loading {
@@ -143,6 +155,15 @@
             text-shadow: 2px 2px 0px #000;
             transition: transform 0.1s;
             z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-btn img {
+            width: 16px;
+            height: 16px;
+            image-rendering: pixelated;
         }
 
         .back-btn:active {
@@ -155,6 +176,18 @@
             height: 32px;
             vertical-align: middle;
             image-rendering: pixelated;
+        }
+
+        @media (max-width: 768px) {
+            .title {
+                font-size: 36px;
+            }
+            .back-btn {
+                padding: 10px;
+            }
+            .back-btn span {
+                display: none;
+            }
         }
 
         .empty-state {
@@ -194,10 +227,13 @@
 
 <body>
     <div class="container">
-        <button class="back-btn" onclick="window.location.href='index.html'">VOLTAR</button>
+        <button class="back-btn" onclick="window.location.href='index.html'">
+            <img src="assets/sprites/icons/back.svg" alt="Voltar">
+            <span>VOLTAR</span>
+        </button>
 
         <div class="header">
-            <div class="title">🏆 RANKING</div>
+            <div class="title">RANKING</div>
             <div class="subtitle">Top jogadores de Ruti Stack</div>
         </div>
 
