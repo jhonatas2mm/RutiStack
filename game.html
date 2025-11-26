@@ -828,28 +828,34 @@
             font-size: 0.8em;
             margin-left: 8px;
         }
+
         @media (max-width: 768px) {
             .shortcut-key {
                 display: none;
             }
+
             /* Mobile: smaller line labels and inputs */
             .line-label-mobile {
                 font-size: 9px !important;
             }
+
             .char-input {
                 height: 44px;
                 font-size: 17px;
             }
+
             #score-display {
                 font-size: 13px;
                 top: 10px;
                 left: 12px;
                 line-height: 1;
             }
+
             .heart-icon {
                 width: 15px;
                 height: 15px;
             }
+
             #lives-display {
                 top: 10px;
                 right: 10px;
@@ -857,6 +863,7 @@
                 transform: none;
                 gap: 4px;
             }
+
             /* Move top bar to bottom on mobile */
             #top-right-buttons {
                 top: auto;
@@ -866,13 +873,16 @@
                 justify-content: space-between;
                 gap: 12px;
             }
+
             #top-right-buttons img {
                 width: 20px;
                 height: 20px;
             }
+
             #top-right-buttons .btn-label {
                 display: none;
             }
+
             #reset-game-btn,
             #exit-btn {
                 padding: 4px !important;
@@ -883,6 +893,7 @@
                 min-width: 28px !important;
                 min-height: 28px !important;
             }
+
             #reset-game-btn img,
             #exit-btn img {
                 width: 18px !important;
@@ -1064,7 +1075,7 @@
                 if (configSnap.exists()) {
                     const data = configSnap.data();
                     gameConfig = { ...gameConfig, ...data };
-                // Remote config loaded
+                    // Remote config loaded
                 } else {
                     // Create default if not exists
                     await setDoc(configRef, gameConfig);
@@ -1650,6 +1661,8 @@
             this.load.audio('sfx_ui_click', 'assets/audio/sfx_ui_btn.ogg');
             this.load.audio('sfx_heart_lost', 'assets/audio/heart_lost.ogg');
             this.load.audio('sfx_score_pass', 'assets/audio/score_pass.ogg');
+            this.load.audio('sfx_rank_1', 'assets/audio/sfx_rank_1.ogg');
+            this.load.audio('sfx_rank_2_3', 'assets/audio/sfx_rank_2_3.ogg');
 
             // 2. Crane (Simple Gray)
             graphics.clear();
@@ -1872,7 +1885,7 @@
             isSceneReady = true;
             console.log('Scene Create Complete. isSceneReady = true');
             // Refresh ranking lines with scene context (ensures top lines appear)
-            refreshRankingHeightsFromRemote(this).catch(() => {});
+            refreshRankingHeightsFromRemote(this).catch(() => { });
             // Owl Frame Removed
 
             // Update Restart Button Text
@@ -3011,8 +3024,12 @@
                 if (!line.passed && passedByScore) {
                     line.passed = true;
                     // Play sound only for top 3
-                    if (line.idx < 3) {
-                        playSound(scene, 'sfx_score_pass', { volume: 0.25 });
+                    if (line.idx === 0) {
+                        // Top 1
+                        playSound(scene, 'sfx_rank_1', { volume: 0.4 });
+                    } else if (line.idx < 3) {
+                        // Top 2 or 3
+                        playSound(scene, 'sfx_rank_2_3', { volume: 0.4 });
                     }
                     // CHANGED TO LEFT SIDE (20px) - VERTICALLY CENTERED
                     const pingFont = line.idx === 0 ? '28px' : '20px';
